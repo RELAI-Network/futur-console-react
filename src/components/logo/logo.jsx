@@ -43,7 +43,7 @@ const Logo = forwardRef(({ disabledLink = false, sx, ...other }, ref) => {
       }}
       {...other}
     >
-      <img src="assets/logo.svg" alt="Logo Future Console" />
+      <img src="/assets/logo.svg" alt="Logo Future Console" />
     </Box>
   );
 

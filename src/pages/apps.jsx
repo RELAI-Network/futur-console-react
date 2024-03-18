@@ -1,17 +1,17 @@
 import { Helmet } from 'react-helmet-async';
 
-import { HomeView } from 'src/sections/home/view';
+import { AppsView } from 'src/sections/apps/view';
 
 // ----------------------------------------------------------------------
 
-export default function HomePage() {
+export default function AppsPage() {
   return (
     <>
       <Helmet>
-        <title> Console | Future Store </title>
+        <title> Applications | Future Store Console </title>
       </Helmet>
 
-      <HomeView />
+      <AppsView />
     </>
   );
 }

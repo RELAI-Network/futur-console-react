@@ -11,7 +11,7 @@ export default function AccountPage() {
         <title> Account | Future Store Console</title>
       </Helmet>
 
-    <AccountView />
+      <AccountView />
     </>
   );
 }

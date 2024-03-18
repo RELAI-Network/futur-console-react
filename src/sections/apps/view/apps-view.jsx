@@ -1,5 +1,6 @@
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import TextField from '@mui/material/TextField';
 import Container from '@mui/material/Container';
@@ -13,21 +14,18 @@ import Tableview from 'src/components/table_view';
 
 // ----------------------------------------------------------------------
 
-export default function HomeView() {
+export default function AppsView() {
   const form = useFormValidation({});
 
   return (
     <Container maxWidth="xl">
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        Hi, Welcome back 👋
-      </Typography>
-      <br />
       <Divider color="primary" />
       <br />
       <Stack
         direction="row"
         spacing={2}
         alignItems="center"
+        sx={{ mb: 5 }}
         justifyContent="space-between"
       >
         <Stack direction="row" alignItems="center">
@@ -37,24 +35,35 @@ export default function HomeView() {
           <Typography variant="h5">Applications</Typography>
         </Stack>
         <Box>
-          <TextField
-            name="search"
-            label="Search application"
-            required
-            helperText={form.validationErrors.searchApp}
-            error={!!form.validationErrors.searchApp}
-            onChange={(e) => form.setFieldValue('searchApp', e.target.value)}
-            size="small"
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Iconify icon="material-symbols:search" />
-                </InputAdornment>
-              ),
-            }}
-          />
+          <Button
+            href="apps/create"
+            variant="contained"
+            color="inherit"
+            startIcon={<Iconify icon="eva:plus-fill" />}
+          >
+            Add
+          </Button>
         </Box>
       </Stack>
+      <Box>
+        <TextField
+          name="search"
+          label="Search application"
+          required
+          helperText={form.validationErrors.searchApp}
+          error={!!form.validationErrors.searchApp}
+          onChange={(e) => form.setFieldValue('searchApp', e.target.value)}
+          size="small"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Iconify icon="material-symbols:search" />
+              </InputAdornment>
+            ),
+          }}
+        />
+      </Box>
+      <br />
       <Tableview
         addNewBtnLabel="Add"
         title="Applications"

@@ -5,6 +5,8 @@ import DashboardLayout from '../layouts/dashboard';
 import PublishersProtectedLayout from '../layouts/protected/publishers';
 
 export const AccountPage = lazy(() => import('src/pages/account'));
+export const AppsPage = lazy(() => import('src/pages/apps'));
+export const CreateAppPage = lazy(() => import('src/pages/create-app'));
 
 export const IndexPage = lazy(() => import('src/pages/home'));
 export const SignUpPage = lazy(() => import('src/pages/sign-up'));
@@ -29,19 +31,23 @@ export default function Router() {
       children: [
         { element: <IndexPage />, index: true },
         { element: <AccountPage />, path: 'account' },
+        { element: <AppsPage />, path: 'apps' },
+        { element: <CreateAppPage />, path: 'apps/create' },
       ],
     },
     {
-      path: 'login',
-      element: <LoginPage />,
-    },
-    {
-      path: 'sign-up',
-      element: <SignUpPage />,
-    },
-    {
-      path: 'forgot-password',
-      element: <ForgotPasswordPage />,
+      element: (
+        <PublishersProtectedLayout>
+            <Suspense>
+              <Outlet />
+            </Suspense>
+        </PublishersProtectedLayout>
+      ),
+      children: [
+        { element: <LoginPage />, path: 'login' },
+        { element: <SignUpPage />, path: 'sign-up' },
+        { element: <ForgotPasswordPage />, path: 'forgot-password' },
+      ],
     },
     {
       path: '404',

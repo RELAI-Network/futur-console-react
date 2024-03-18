@@ -1,5 +1,5 @@
 // Function to add a document to a collection
-import { doc, addDoc, getDoc, setDoc, updateDoc, collection } from 'firebase/firestore';
+import { doc, addDoc, getDoc, setDoc, getDocs, updateDoc, collection } from 'firebase/firestore';
 
 import { db } from '../config';
 import { FirestoreError, getFirestoreErrorMessage } from './errors';
@@ -52,6 +52,28 @@ async function getDocument(collectionName, documentId) {
   }
 }
 
+async function getAll(collectionName) {
+  try {
+    const collectionRef = collection(db, collectionName);
+
+    const querySnapshot = await getDocs(collectionRef);
+
+    const documents = [];
+
+    querySnapshot.forEach((document) => {
+      documents.push({ id: document.id, ...document.data() });
+    });
+
+    return documents;
+  } catch (error) {
+    console.error('Error getting document: ', error);
+
+    const errorMessage = getFirestoreErrorMessage(error.code);
+
+    throw new FirestoreError(errorMessage);
+  }
+}
+
 // Function to update a document in a collection
 async function updateDocument(collectionName, documentId, data) {
   try {
@@ -80,4 +102,4 @@ async function deleteDocument(collectionName, documentId) {
   }
 }
 
-export { addDocument, getDocument, updateDocument, deleteDocument };
+export { getAll, addDocument, getDocument, updateDocument, deleteDocument };

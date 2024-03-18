@@ -6,15 +6,9 @@ import CircularProgress from '@mui/material/CircularProgress';
 
 import { useAuth } from 'src/hooks/use_auth';
 
-import AccountPage from 'src/pages/account';
-import DashboardNoActionsLayout from 'src/layouts/dashboard/dashboard-no-actions';
 
-const PublishersProtectedLayout = ({ children }) => {
+const PublicLayout = ({ children }) => {
   const { user, status } = useAuth();
-
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
 
   if (status === 'idle' || status === 'pending') {
     return (
@@ -24,19 +18,15 @@ const PublishersProtectedLayout = ({ children }) => {
     );
   }
 
-  if (user?.paidDeveloperFee ?? false) {
-    return <>{children}</>;
+  if (user && user.isActive) {
+    return <Navigate to="/" replace />;
   }
 
-  return (
-    <DashboardNoActionsLayout>
-      <AccountPage />
-    </DashboardNoActionsLayout>
-  );
+  return <>{children}</>;
 };
 
-PublishersProtectedLayout.propTypes = {
+PublicLayout.propTypes = {
   children: PropTypes.node,
 };
 
-export default PublishersProtectedLayout;
+export default PublicLayout;

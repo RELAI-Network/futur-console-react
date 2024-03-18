@@ -28,7 +28,7 @@ export default function Header({ noActions = false, onOpenNav }) {
 
   const renderContent = (
     <>
-      {!lgUp && (
+      {lgUp || (
         <IconButton onClick={onOpenNav} sx={{ mr: 1 }}>
           <Iconify icon="eva:menu-2-fill" />
         </IconButton>
@@ -41,7 +41,7 @@ export default function Header({ noActions = false, onOpenNav }) {
       <Stack direction="row" alignItems="center" spacing={1}>
         <LanguagePopover />
         {noActions || <NotificationsPopover />}
-        <AccountPopover noActions />
+        <AccountPopover noActions={noActions} />
       </Stack>
     </>
   );

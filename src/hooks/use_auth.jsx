@@ -61,11 +61,15 @@ export const AuthProvider = ({ children }) => {
   const value = useMemo(
     () => ({
       status,
-      user :  {
-        ...(user ?? {}),
-        ...(firestoreUser ?? {}),
-        paidDeveloperFee: firestoreUser?.paid_developer_fee ?? false,
-      },
+      user:
+        user === null
+          ? null
+          : {
+              ...(user ?? {}),
+              ...(firestoreUser ?? {}),
+              paidDeveloperFee: firestoreUser?.paid_developer_fee ?? false,
+              isActive: true,
+            },
       firestoreUser,
       login,
       logout,

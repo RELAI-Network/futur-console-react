@@ -56,6 +56,7 @@ export async function payRegistrationFee({
   website,
   onSuccess,
   onError,
+  onStartup,
   onProcessing,
 }) {
   try {
@@ -68,13 +69,37 @@ export async function payRegistrationFee({
 
     const injector = await web3FromAddress(address);
 
-    const registration = await api.tx.futurCreatorsReg
-      .registerDeveloper(name, email, website)
-      .signAndSend(address, { signer: injector.signer }, (result) => {
-        onProcessing(result);
+    const registration = api.tx.futurCreatorsReg.registerDeveloper(name, email, website);
+
+    const registrationPaymentInfo = await registration.paymentInfo(address);
+
+    onStartup({ api, injector, payment: registrationPaymentInfo });
+
+    registration.signAndSend(address, { signer: injector.signer }, (result) => {
+      onProcessing({
+        isInBlock: result.isInBlock,
+        isFinalized: result.isFinalized,
+        isCompleted: result.isCompleted,
+        isError: result.isError,
+        isWarning: result.isWarning,
+        txIndex: result.txIndex,
+        dispatchError: result.dispatchError,
+        result,
+        log: result.toHuman(),
       });
 
-    onSuccess({ api, injector, registration });
+      if (result.isCompleted && result.isFinalized) {
+        onSuccess({
+          api,
+          injector,
+          result: { tx_hash: result.txHash.toHex(), ...result },
+        });
+      }
+
+      if (result.isError) {
+        throw Error(result.dispatchError.toString());
+      }
+    });
   } catch (e) {
     onError(e);
   }
