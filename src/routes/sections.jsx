@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { Outlet, Navigate, useRoutes } from 'react-router-dom';
 
+import PublicLayout from 'src/layouts/auth';
+
 import DashboardLayout from '../layouts/dashboard';
 import PublishersProtectedLayout from '../layouts/protected/publishers';
 
@@ -37,11 +39,11 @@ export default function Router() {
     },
     {
       element: (
-        <PublishersProtectedLayout>
+        <PublicLayout>
             <Suspense>
               <Outlet />
             </Suspense>
-        </PublishersProtectedLayout>
+        </PublicLayout>
       ),
       children: [
         { element: <LoginPage />, path: 'login' },

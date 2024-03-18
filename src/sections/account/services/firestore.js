@@ -1,6 +1,10 @@
 import { updateDocument } from 'src/services/firebase/firestore/helpers';
 import { usersCollection } from 'src/services/firebase/firestore/constants';
 
+function geneateId() {
+  return Math.floor(Math.random() * (999999999999999 - 100000000000000 + 1)) + 100000000000000;
+}
+
 export async function updateUserAccountAfterRegistration({
   userID,
   accountAddress,
@@ -9,9 +13,12 @@ export async function updateUserAccountAfterRegistration({
   paymentFee,
   txHash,
 }) {
+
+  const publisherId = geneateId();
   try {
     await updateDocument(usersCollection, userID, {
       paid_developer_fee: true,
+      web3_account_id: publisherId,
       web3_account_address: accountAddress,
       web3_account_name: accountName,
       web3_account_source: accountSource,
