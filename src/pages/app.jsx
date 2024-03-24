@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 
-import { AppView } from 'src/sections/overview/view';
+import { AppView } from 'src/sections/apps/view/';
 
 // ----------------------------------------------------------------------
 
@@ -8,7 +8,7 @@ export default function AppPage() {
   return (
     <>
       <Helmet>
-        <title> Console | Future Store </title>
+        <title> Application | Console Futur Store </title>
       </Helmet>
 
       <AppView />

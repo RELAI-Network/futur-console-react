@@ -8,7 +8,7 @@ export default function SignUp() {
   return (
     <>
       <Helmet>
-        <title> Sign Up | Future Store </title>
+        <title> Sign Up | Futur Store </title>
       </Helmet>
 
       <SignUpView />

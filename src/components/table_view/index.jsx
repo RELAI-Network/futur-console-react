@@ -32,6 +32,7 @@ export default function Tableview({
   addNewBtnLabel = 'Add',
   showHeader = true,
   showSearchAndFilter = true,
+  onClickRow,
 }) {
   const [page, setPage] = useState(0);
 
@@ -151,6 +152,7 @@ export default function Tableview({
                       identifier={identifier}
                       selected={selected.indexOf(row[identifier]) !== -1}
                       handleClick={(event) => handleClick(event, row[identifier])}
+                      onClick={onClickRow ? () => onClickRow(row[identifier]) : null}
                     />
                   ))}
 
@@ -188,4 +190,5 @@ Tableview.propTypes = {
   headers: PropTypes.arrayOf(HeaderField),
   showHeader: PropTypes.bool,
   showSearchAndFilter: PropTypes.bool,
+  onClickRow: PropTypes.func,
 };

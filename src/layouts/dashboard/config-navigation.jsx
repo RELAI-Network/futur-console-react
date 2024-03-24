@@ -28,11 +28,6 @@ const navConfig = [
     icon: icon('ebook'),
   },
   {
-    title: 'users',
-    path: '/users',
-    icon: icon('ic_user'),
-  },
-  {
     title: 'account',
     path: '/account',
     icon: icon('account'),

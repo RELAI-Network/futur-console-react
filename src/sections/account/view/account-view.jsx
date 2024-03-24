@@ -33,6 +33,10 @@ export default function AccountView() {
               <img src="/assets/icons/navbar/account.svg" alt="Account" width={45} />{' '}
               <Box ml={2}>
                 <Typography>
+                  Developper / Publisher Id :{' '}
+                  <span style={{ fontWeight: 'bold' }}>{user.publisher_id}</span>
+                </Typography>
+                <Typography>
                   Account Name :{' '}
                   <span style={{ fontWeight: 'bold' }}>{user.web3_account_name}</span>
                 </Typography>

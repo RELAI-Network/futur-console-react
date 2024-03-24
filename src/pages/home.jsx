@@ -8,7 +8,7 @@ export default function HomePage() {
   return (
     <>
       <Helmet>
-        <title> Console | Future Store </title>
+        <title> Console | Futur Store </title>
       </Helmet>
 
       <HomeView />

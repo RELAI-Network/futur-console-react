@@ -8,7 +8,7 @@ export default function AccountPage() {
   return (
     <>
       <Helmet>
-        <title> Account | Future Store Console</title>
+        <title> Account | Futur Store Console</title>
       </Helmet>
 
       <AccountView />

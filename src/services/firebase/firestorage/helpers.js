@@ -1,4 +1,4 @@
-import { ref, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
+import { ref, uploadString, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
 
 import { storage } from '../config';
 import { handleStorageError } from './errors';
@@ -30,7 +30,7 @@ function createStorageRef(filePath) {
  * @returns {Promise<string>} A promise that resolves with the download URL of the uploaded file.
  * @throws {Error} Throws an error if the upload fails.
  */
-async function uploadFile({filePath, file, metadata, onProgress, onError, onSuccess}) {
+async function uploadFile({ filePath, file, metadata, onProgress, onError, onSuccess }) {
   const storageRef = createStorageRef(filePath);
 
   const uploadTask = uploadBytesResumable(storageRef, file, metadata);
@@ -77,6 +77,31 @@ async function uploadFile({filePath, file, metadata, onProgress, onError, onSucc
   );
 
   return downloadURL;
+}
+
+/**
+ * Uploads a file to Firebase Storage.
+ *
+ * @param {String} filePath The path to the file within the bucket (e.g., "images/my_file.jpg").
+ * @param {String} file The file as a string to upload.
+ * @param {String} format The file as a string to upload.
+ * @param {Object} metadata The file object metadata (such as name, size, and contentType).
+ * @param {function(number)} onProgress Optional callback function to receive upload progress (0-100).
+ * @param {function(String)} onError Optional callback function to get the error message.
+ * @param {function(String)} onSuccess Optional callback function to get the download URL.
+ * @returns {Promise<string>} A promise that resolves with the download URL of the uploaded file.
+ * @throws {Error} Throws an error if the upload fails.
+ */
+async function uploadStringFile({ filePath, file, format, metadata }) {
+  try {
+    const storageRef = createStorageRef(filePath);
+
+    const snapshot = await uploadString(storageRef, file, format, metadata);
+
+    return getDownloadURL(snapshot.ref).then((url) => url);
+  } catch (error) {
+    throw handleStorageError(error);
+  }
 }
 
 /**
@@ -133,4 +158,4 @@ async function listFiles(storageRef) {
   return items;
 }
 
-export { listFiles, uploadFile, deleteFile, downloadFile, getFileMetadata };
+export { listFiles, uploadFile, deleteFile, downloadFile, getFileMetadata, uploadStringFile };

@@ -8,7 +8,7 @@ export default function LoginPage() {
   return (
     <>
       <Helmet>
-        <title> Login | Future Store </title>
+        <title> Login | Futur Store </title>
       </Helmet>
 
       <LoginView />

@@ -150,7 +150,7 @@ export default function LoginView() {
               textAlign: 'center',
             }}
           >
-            <Typography variant="h4">Sign in to Future Console</Typography>
+            <Typography variant="h4">Sign in to Futur Console</Typography>
           </Box>
 
           <Typography variant="body2" sx={{ mt: 2, mb: 5 }}>

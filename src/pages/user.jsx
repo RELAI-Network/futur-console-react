@@ -8,7 +8,7 @@ export default function UserPage() {
   return (
     <>
       <Helmet>
-        <title> User | Future Store </title>
+        <title> User | Futur Store </title>
       </Helmet>
 
       <UserView />

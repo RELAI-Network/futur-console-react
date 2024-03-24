@@ -8,7 +8,7 @@ export default function AppsPage() {
   return (
     <>
       <Helmet>
-        <title> Applications | Future Store Console </title>
+        <title> Applications | Futur Store Console </title>
       </Helmet>
 
       <AppsView />

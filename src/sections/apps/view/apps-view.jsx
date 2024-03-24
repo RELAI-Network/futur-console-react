@@ -4,18 +4,35 @@ import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import TextField from '@mui/material/TextField';
 import Container from '@mui/material/Container';
+import TableCell from '@mui/material/TableCell';
 import Typography from '@mui/material/Typography';
 import InputAdornment from '@mui/material/InputAdornment';
+
+import { useRouter } from 'src/routes/hooks';
+
+import { useAuth } from 'src/hooks/use_auth';
+import usePromise from 'src/hooks/use_promise';
 
 import { useFormValidation } from 'src/utils/forms/hooks/useFormValidation';
 
 import Iconify from 'src/components/iconify';
 import Tableview from 'src/components/table_view';
+import CircularLoader from 'src/components/loader/CircularLoader';
+
+import { getDeveloperApplications } from '../services/firestore';
 
 // ----------------------------------------------------------------------
 
 export default function AppsView() {
   const form = useFormValidation({});
+
+  const router = useRouter();
+
+  const { user } = useAuth();
+
+  const { data: applications, loading: isLoading } = usePromise(() =>
+    getDeveloperApplications({ developerId: user.publisher_id })
+  );
 
   return (
     <Container maxWidth="xl">
@@ -64,25 +81,58 @@ export default function AppsView() {
         />
       </Box>
       <br />
-      <Tableview
-        addNewBtnLabel="Add"
-        title="Applications"
-        fields={[
-          {
-            attribute: 'name',
-          },
-        ]}
-        headers={[
-          {
-            attribute: 'name',
-            label: 'Name',
-          },
-        ]}
-        identifier="id"
-        items={[]}
-        showHeader={false}
-        showSearchAndFilter={false}
-      />
+      {isLoading ? (
+        <CircularLoader />
+      ) : (
+        <Tableview
+          addNewBtnLabel="Add"
+          title="Applications"
+          fields={[
+            {
+              attribute: 'name',
+            },
+            {
+              attribute: 'category_name',
+            },
+            {
+              attribute: 'created_at',
+              builder: (createdAt) => (
+                <TableCell align="left">
+                  {new Date(createdAt.seconds * 1000).toLocaleDateString()}
+                </TableCell>
+              ),
+            },
+            {
+              attribute: 'downloads_count',
+            },
+          ]}
+          headers={[
+            {
+              attribute: 'name',
+              label: 'Name',
+            },
+            {
+              attribute: 'category_name',
+              label: 'Category',
+            },
+            {
+              attribute: 'created_at',
+              label: 'Added at',
+            },
+            {
+              attribute: 'downloads_count',
+              label: 'Installations',
+            },
+          ]}
+          identifier="id"
+          items={applications}
+          showHeader={false}
+          showSearchAndFilter={false}
+          onClickRow={(id) => {
+            router.push(`/apps/view/${id}`);
+          }}
+        />
+      )}
     </Container>
   );
 }

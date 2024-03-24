@@ -8,7 +8,7 @@ export default function CreateAppPage() {
   return (
     <>
       <Helmet>
-        <title> Create application | Future Store Console </title>
+        <title> Create application | Futur Store Console </title>
       </Helmet>
 
       <CreateAppView />

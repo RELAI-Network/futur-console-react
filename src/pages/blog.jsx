@@ -8,7 +8,7 @@ export default function BlogPage() {
   return (
     <>
       <Helmet>
-        <title> Blog | Future Store </title>
+        <title> Blog | Futur Store </title>
       </Helmet>
 
       <BlogView />

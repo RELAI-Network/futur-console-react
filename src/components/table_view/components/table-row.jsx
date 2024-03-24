@@ -12,7 +12,7 @@ import Iconify from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 
-export default function CustomTableRow({ selected, fields, value, handleClick }) {
+export default function CustomTableRow({ selected, fields, value, handleClick, onClick }) {
   const [open, setOpen] = useState(null);
 
   const handleOpenMenu = (event) => {
@@ -25,16 +25,26 @@ export default function CustomTableRow({ selected, fields, value, handleClick })
 
   return (
     <>
-      <TableRow hover tabIndex={-1} role="checkbox" selected={selected}>
+      <TableRow
+        sx={{
+          cursor: onClick ? 'pointer' : null,
+          ':hover': onClick ? { backgroundColor: 'green', } : null,
+        }}
+        hover
+        tabIndex={-1}
+        role="checkbox"
+        selected={selected}
+        onClick={onClick}
+      >
         <TableCell padding="checkbox">
           <Checkbox disableRipple checked={selected} onChange={handleClick} />
         </TableCell>
 
         {fields.map((item, index) =>
-          item.builder === null ? (
-            <TableCell align={item.textAlign}>{value[item.attribute]}</TableCell>
+          item.builder ? (
+            item.builder(value[item.attribute], value, index)
           ) : (
-            item.builder(value[item.attribute], index)
+            <TableCell align={item.textAlign}>{value[item.attribute]}</TableCell>
           )
         )}
 
@@ -79,5 +89,6 @@ CustomTableRow.propTypes = {
   fields: PropTypes.arrayOf(RowField),
   value: PropTypes.any,
   handleClick: PropTypes.func,
+  onClick: PropTypes.func,
   selected: PropTypes.any,
 };

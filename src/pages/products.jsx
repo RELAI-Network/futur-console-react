@@ -8,7 +8,7 @@ export default function ProductsPage() {
   return (
     <>
       <Helmet>
-        <title> Products | Future Store </title>
+        <title> Products | Futur Store </title>
       </Helmet>
 
       <ProductsView />

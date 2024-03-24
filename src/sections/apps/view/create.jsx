@@ -65,10 +65,17 @@ export default function CreateNewApp() {
           // 2 - Presentation
           logo_image_square: 'Select your application main logo.',
           cover_image_rect: 'Select your application cover image.',
-          // app_screenshots: 'Add your application screenshots.',
+          // app_screenshots: ({ value, values }) => {
+          //   if (!value || (value ?? []).length < 2) {
+          //     return 'Add at least two screenshot.';
+          //   }
+
+          //   return undefined;
+          // },
 
           // 3 - Additionnal
           tags: 'Add application tags.',
+          package_name: 'Add application Package Name',
           min_age_requirement: 'Indicate min age requirement.',
         },
         setFieldError: (field, message) => {
@@ -191,9 +198,7 @@ export default function CreateNewApp() {
               <FilePond
                 label="App Logo Image (512x512)"
                 files={form.data.logo_image_square ? [form.data.logo_image_square] : []}
-                onaddfilestart={(files) => {
-                  const file = files?.[0]?.file;
-
+                onaddfilestart={({ file }) => {
                   if (file && file.type && file.type.startsWith('image/')) {
                     /* empty */
                   } else {
@@ -224,9 +229,7 @@ export default function CreateNewApp() {
               <FilePond
                 label="App Cover Image (1000x512)"
                 files={form.data.cover_image_rect ? [form.data.cover_image_rect] : []}
-                onaddfilestart={(files) => {
-                  const file = files?.[0]?.file;
-
+                onaddfilestart={({ file }) => {
                   if (file && file.type && file.type.startsWith('image/')) {
                     /* empty */
                   } else {
@@ -255,10 +258,8 @@ export default function CreateNewApp() {
             <Grid item xs={12}>
               <FilePond
                 label="App Screenshots"
-                files={form.data.app_screenshots ? [...form.data.app_screenshots] : []}
-                onaddfilestart={(files) => {
-                  const file = files?.[0]?.file;
-
+                files={form.data.app_screenshots ? form.data.app_screenshots : []}
+                onaddfilestart={({ file }) => {
                   if (file && file.type && file.type.startsWith('image/')) {
                     /* empty */
                   } else {
@@ -267,9 +268,10 @@ export default function CreateNewApp() {
                 }}
                 onupdatefiles={(files) => {
                   const file = files?.[0]?.file;
-
+                  const prevScreenShoots = form.data.app_screenshots ?? [];
+                  debugger;
                   if (file && file.type && file.type.startsWith('image/')) {
-                    form.setFieldValue('app_screenshots', [...form.data.app_screenshots, file]);
+                    form.setFieldValue('app_screenshots', [...prevScreenShoots, file]);
                   } else {
                     form.setFieldError('app_screenshots', 'Select a valid image');
                   }
@@ -280,7 +282,7 @@ export default function CreateNewApp() {
                 acceptedFileTypes={['image/*']}
                 name="app_screenshots"
                 labelIdle="App Screenshots"
-                helperText="At least four screenshots"
+                helperText="At least two screenshots"
               />
               <Typography color="error">{form.validationErrors.app_screenshots}</Typography>
             </Grid>
@@ -307,8 +309,9 @@ export default function CreateNewApp() {
             <Grid item xs={6}>
               <FormSelect
                 onChange={(value) => {
-
-                  form.setFieldValue('tags', [...(form.data.tags ?? []), ...value]);
+                  const prevTags = form.data.tags ?? [];
+                  debugger;
+                  form.setFieldValue('tags', [...prevTags, ...value]);
                 }}
                 multiple
                 label="Tags *"
@@ -380,6 +383,18 @@ export default function CreateNewApp() {
                 itemValueBuilder={(item) => item.value}
                 itemLabelBuilder={(item) => item.label}
                 name="has_in_app_purchases"
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                name="package_name"
+                label="Package name"
+                helperText={form.validationErrors.package_name}
+                error={!!form.validationErrors.package_name}
+                onChange={(e) => form.setFieldValue('package_name', e.target.value)}
+                size="small"
+                fullWidth
               />
             </Grid>
 
