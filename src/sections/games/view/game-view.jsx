@@ -12,28 +12,46 @@ import Container from '@mui/material/Container';
 import TableCell from '@mui/material/TableCell';
 import Typography from '@mui/material/Typography';
 
+import { useRouter } from 'src/routes/hooks';
+
 import usePromise from 'src/hooks/use_promise';
 
+import Iconify from 'src/components/iconify';
 import Tableview from 'src/components/table_view';
 import CircularLoader from 'src/components/loader/CircularLoader';
 
-import { getDeveloperGame, getApplicationReleases } from '../services/firestore';
+import { getGameReleases, getDeveloperGame } from '../services/firestore';
 
 export default function GameView() {
   const { id: applicationId } = useParams();
 
-  const { data: application, loading: applicationLoading } = usePromise(() =>
-    getDeveloperGame({ applicationId })
+  const router = useRouter();
+
+  const { data: application, loading: applicationLoading } = usePromise(
+    () => getDeveloperGame({ applicationId }),
+    [applicationId]
   );
 
-  const { data: releases, loading: releasesLoading } = usePromise(async () =>
-    getApplicationReleases({ applicationId })
+  const { data: releases, loading: releasesLoading } = usePromise(
+    async () => getGameReleases({ applicationId }),
+    [applicationId]
   );
 
   return (
     <Container maxWidth="xl">
       <Stack>
-        <Typography variant="h4">Dashboard</Typography>
+        <Stack mb={1} direction="row" alignItems="center" justifyContent="start">
+          <Iconify
+            color="primary"
+            sx={{ mr: 1 }}
+            icon="material-symbols:arrow-back-ios"
+            width={24}
+            height={24}
+            onClick={() => window.history.back()}
+            cursor="pointer"
+          />
+          <Typography variant="h4">Dashboard</Typography>
+        </Stack>
         <Divider color="primary" />
         <br />
         {applicationLoading ? (
@@ -62,7 +80,7 @@ export default function GameView() {
             </Stack>
             <Box>
               <Button
-                href={`/games/view/${applicationId}/add-release`}
+                onClick={() => router.push(`/apps/view/${applicationId}/add-release`)}
                 variant="contained"
                 color="primary"
               >
@@ -101,10 +119,23 @@ export default function GameView() {
               ),
             },
             {
+              attribute: 'published_at',
+              builder: (at) => (
+                <TableCell align="left">
+                  {at?.seconds ? new Date(at.seconds * 1000).toLocaleDateString() : null}
+                </TableCell>
+              ),
+            },
+            {
               attribute: 'downloads_count',
             },
             {
-              attribute: 'releases_notes',
+              attribute: 'published',
+              builder: (published, release) => (
+                <TableCell sx={{ color: published ? 'green' : 'orange' }} align="left">
+                  {published ? 'Published' : release.status ?? 'Unpublished'}
+                </TableCell>
+              ),
             },
           ]}
           headers={[
@@ -121,12 +152,16 @@ export default function GameView() {
               label: 'Added at',
             },
             {
+              attribute: 'published_at',
+              label: 'Published at',
+            },
+            {
               attribute: 'downloads_count',
               label: 'Installations',
             },
             {
-              attribute: 'releases_notes',
-              label: 'Notes',
+              attribute: 'published',
+              label: 'Status',
             },
           ]}
           identifier="id"
@@ -134,7 +169,7 @@ export default function GameView() {
           showHeader={false}
           showSearchAndFilter={false}
           onClickRow={(id) => {
-            // router.push(`/games/view/${id}`);
+            router.push(`/games/view/${applicationId}/release/${id}`);
           }}
         />
       )}

@@ -181,10 +181,10 @@ export default function AccountSetupView() {
             <TextField
               value={selectedAccount?.publisherName ?? selectedAccount?.meta?.name}
               name="publisher_name"
-              label="Developer Name"
+              label={`${user.role[0].toUpperCase() + user.role.slice(1)} Name`}
               required
               disabled={payingDeveloperFee}
-              helperText="Your developer or organization name"
+              helperText={`Your ${user.role} or organization name`}
               onChange={(e) => {
                 setSelectedAccount({ ...selectedAccount, publisherName: e.target.value });
               }}
@@ -276,7 +276,7 @@ export default function AccountSetupView() {
             variant="contained"
             color="primary"
           >
-            Register as a developer
+            Register as a {`${user.role}`}
           </LoadingButton>
         </Stack>
       </Box>

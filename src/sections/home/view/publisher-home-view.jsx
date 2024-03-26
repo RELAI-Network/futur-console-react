@@ -18,21 +18,16 @@ import Iconify from 'src/components/iconify';
 import Tableview from 'src/components/table_view';
 import CircularLoader from 'src/components/loader/CircularLoader';
 
-import { getDeveloperGames } from 'src/sections/games/services/firestore';
-import { getDeveloperApplications } from 'src/sections/apps/services/firestore';
+import { getPublisherBooks } from 'src/sections/books/services/firestore';
 // ----------------------------------------------------------------------
 
-export default function HomeView() {
+export default function PublisherHomeView() {
   const form = useFormValidation({});
 
   const { user } = useAuth();
 
-  const { data: applications, loading: appplicationsAreLoading } = usePromise(() =>
-    getDeveloperApplications({ developerId: user.publisher_id })
-  );
-
-  const { data: games, loading: gamesAreLoasding } = usePromise(() =>
-    getDeveloperGames({ developerId: user.publisher_id })
+  const { data: books, loading: booksAreLoading } = usePromise(() =>
+    getPublisherBooks({ developerId: user.publisher_id })
   );
 
   const router = useRouter();
@@ -47,7 +42,7 @@ export default function HomeView() {
       <br />
       <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
         <Stack direction="row" alignItems="center">
-          <Typography variant="h5">Applications & Games</Typography>
+          <Typography variant="h5">Books</Typography>
         </Stack>
         <Box>
           <TextField
@@ -68,54 +63,58 @@ export default function HomeView() {
           />
         </Box>
       </Stack>
-      {appplicationsAreLoading || gamesAreLoasding ? (
+      {booksAreLoading ? (
         <CircularLoader />
       ) : (
         <Tableview
           addNewBtnLabel="Add"
-          title="Applications"
+          title="Books"
           fields={[
             {
-              attribute: 'name',
-              builder: (name, app) => (
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  justifyItems="center"
-                  alignContent="center"
-                  margin={0}
-                >
-                  <img
-                    src={`/assets/icons/navbar/${app?.app_type ?? 'app'}s.svg`}
-                    alt="Applications"
-                    width={24}
-                  />
-                  <TableCell align="left">{name}</TableCell>
-                </Stack>
+              attribute: 'cover_url',
+              builder: (coverImageUrl) => (
+                <img src={coverImageUrl} alt="Cover" width={54} height={54} />
               ),
             },
             {
-              attribute: 'category_name',
+              attribute: 'title',
+            },
+            {
+              attribute: 'category_id',
             },
             {
               attribute: 'created_at',
               builder: (createdAt) => (
                 <TableCell align="left">
-                  {new Date(createdAt.seconds * 1000).toLocaleDateString()}
+                  {createdAt?.seconds
+                    ? new Date(createdAt.seconds * 1000).toLocaleDateString()
+                    : null}
                 </TableCell>
               ),
             },
             {
-              attribute: 'downloads_count',
+              attribute: 'genre',
+            },
+            {
+              attribute: 'published',
+              builder: (published, release) => (
+                <TableCell sx={{ color: published ? 'green' : 'orange' }} align="left">
+                  {published ? 'Published' : release.status ?? 'Unpublished'}
+                </TableCell>
+              ),
             },
           ]}
           headers={[
             {
-              attribute: 'name',
-              label: 'Name',
+              attribute: 'cover_url',
+              label: 'Cover',
             },
             {
-              attribute: 'category_name',
+              attribute: 'title',
+              label: 'Title',
+            },
+            {
+              attribute: 'category_id',
               label: 'Category',
             },
             {
@@ -123,16 +122,20 @@ export default function HomeView() {
               label: 'Added at',
             },
             {
-              attribute: 'downloads_count',
-              label: 'Installations',
+              attribute: 'genre',
+              label: 'Genre',
+            },
+            {
+              attribute: 'published',
+              label: 'Status',
             },
           ]}
           identifier="id"
-          items={[...applications, ...games]}
+          items={books}
           showHeader={false}
           showSearchAndFilter={false}
-          onClickRow={(id, item) => {
-            router.push(`/${item?.app_type ?? 'apps'}s/view/${id}`);
+          onClickRow={(id) => {
+            router.push(`/books/view/${id}`);
           }}
         />
       )}

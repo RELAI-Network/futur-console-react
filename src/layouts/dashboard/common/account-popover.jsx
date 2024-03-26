@@ -61,6 +61,7 @@ export default function AccountPopover({ noActions = false }) {
   };
 
   const handleClose = (url) => {
+    console.log(url);
     if (url) router.push(url);
     setOpen(null);
   };
@@ -118,11 +119,16 @@ export default function AccountPopover({ noActions = false }) {
 
         <Divider sx={{ borderStyle: 'dashed' }} />
 
-        {(noActions ? [] : MENU_OPTIONS).map((option) => (
-          <MenuItem key={option.label} onClick={() => handleClose(option.url)}>
-            {option.label}
-          </MenuItem>
-        ))}
+        {(noActions ? [] : MENU_OPTIONS)
+          .map((option) => ({
+            ...option,
+            url: `${user.role}${option.url}`,
+          }))
+          .map((option) => (
+            <MenuItem key={option.label} onClick={() => handleClose(option.url)}>
+              {option.label}
+            </MenuItem>
+          ))}
 
         <Divider sx={{ borderStyle: 'dashed', m: 0 }} />
 

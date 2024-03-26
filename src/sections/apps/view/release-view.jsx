@@ -16,11 +16,13 @@ import LoadingButton from '@mui/lab/LoadingButton';
 
 import { useRouter } from 'src/routes/hooks';
 
+import { useAuth } from 'src/hooks/use_auth';
 import usePromise from 'src/hooks/use_promise';
 
 import Iconify from 'src/components/iconify';
 import CircularLoader from 'src/components/loader/CircularLoader';
 
+import { minScanScore, recommendedScanScore } from '../constants';
 import {
   scanMobSF,
   getApplicationRelease,
@@ -31,6 +33,8 @@ import {
 
 export default function ReleaseView() {
   const { id: releaseId, application_id: applicationId } = useParams();
+
+  const { user } = useAuth();
 
   const router = useRouter();
 
@@ -57,9 +61,13 @@ export default function ReleaseView() {
     setScanningApp(true);
 
     if (release?.scan_hash) {
-      const scanResult = await scanMobSF({ hash: release?.scan_hash });
+      try {
+        const scanResult = await scanMobSF(release?.scan_hash);
 
-      setScanningResult(scanResult);
+        setScanningResult(scanResult);
+      } catch (error) {
+        setScanningApp(false);
+      }
     }
 
     setScanningApp(false);
@@ -68,10 +76,11 @@ export default function ReleaseView() {
   const publish = async () => {
     setPublishing(true);
 
-    if ((scanningResult?.appsec?.security_score ?? release?.scan_score ?? 0) > 50) {
+    if ((scanningResult?.appsec?.security_score ?? release?.scan_score ?? 0) > minScanScore) {
       publishApplicationRelease({
         application_id: applicationId,
         release_id: releaseId,
+        user_account: user?.web3_account_address,
       })
         .then(() => router.reload())
         .catch((e) =>
@@ -101,8 +110,6 @@ export default function ReleaseView() {
     }
   };
 
-  console.log(application, release);
-
   return (
     <Container maxWidth="xl">
       {applicationLoading ? (
@@ -123,7 +130,9 @@ export default function ReleaseView() {
               icon="material-symbols:arrow-back-ios"
               width={24}
               height={24}
-              onClick={() => window.history.back()}
+              onClick={() =>
+                router.push(`/${application?.app_type ?? 'app'}s/view/${applicationId}`)
+              }
               cursor="pointer"
             />
             <Typography sx={{ ml: 1 }} variant="h4">
@@ -155,7 +164,11 @@ export default function ReleaseView() {
                   Added at :{' '}
                   <span style={{ fontWeight: 'bold' }}>
                     {release?.created_at?.seconds
-                      ? new Date(release?.created_at?.seconds * 1000).toLocaleDateString()
+                      ? new Date(release?.created_at?.seconds * 1000).toLocaleString('en-US', {
+                        timeZone: 'UTC',
+                        dateStyle: 'medium',
+                        timeStyle: 'medium',
+                      })
                       : null}
                   </span>
                 </Typography>
@@ -184,14 +197,19 @@ export default function ReleaseView() {
                       Upublish release
                     </LoadingButton>
                   </Stack>
-                ) : (release?.scan_score ?? 0) > 50 && !release.published ? (
+                ) : (release?.scan_score ?? 0) > minScanScore && !release.published ? (
                   <Stack direction="column" alignItems="end" justifyContent="start" spacing={0}>
                     <Typography textAlign="center" variant="h6">
                       Scan result :{'  '}
                       <span
                         style={{
                           fontWeight: 'bold',
-                          color: (release?.scan_score ?? 0) > 50 ? 'green' : 'red',
+                          color:
+                            (release?.scan_score ?? 0) > recommendedScanScore
+                              ? 'green'
+                              : (release?.scan_score ?? 0) > minScanScore
+                                ? 'orange'
+                                : 'red',
                           fontSize: '24px',
                         }}
                       >
@@ -224,7 +242,7 @@ export default function ReleaseView() {
                           ? 'Relaunch scan'
                           : 'Launch scan'}
                     </Button>
-                    {(scanningResult?.appsec?.security_score ?? 0) > 50 && (
+                    {(scanningResult?.appsec?.security_score ?? 0) > minScanScore && (
                       <Stack direction="column" alignItems="center" justifyContent="end">
                         <Button
                           disabled={scanningApp || publishing}
@@ -260,7 +278,12 @@ export default function ReleaseView() {
                 <span
                   style={{
                     fontWeight: 'bold',
-                    color: scanningResult.appsec.security_score < 50 ? 'red' : 'green',
+                    color:
+                      (scanningResult?.appsec?.security_score ?? 0) > recommendedScanScore
+                        ? 'green'
+                        : (scanningResult?.appsec?.security_score ?? 0) > minScanScore
+                          ? 'orange'
+                          : 'red',
                     fontSize: '24px',
                   }}
                 >
@@ -270,41 +293,80 @@ export default function ReleaseView() {
               </Typography>
               <Divider color="primary" />
               <br />
-              <Typography sx={{ textDecoration: 'underline' }}>Resume</Typography>
+              <Typography sx={{ textDecoration: 'underline', fontSize: '18px' }}>Resume</Typography>
               <br />
-              {(scanningResult.appsec.hotspot ?? []).map((high) => (
-                <Typography>
-                  {' '}
-                  <span
-                    style={{
-                      fontWeight: 'bold',
-                      color: 'orange',
-                    }}
-                  >
-                    {high.title}{' '}
-                  </span>
-                </Typography>
-              ))}
-              {(scanningResult.appsec.high ?? []).map((high) => (
-                <Typography>
-                  {' '}
-                  <span
-                    style={{
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    {high.title}{' '}
-                  </span>
-                </Typography>
-              ))}
-              {(scanningResult.appsec.info ?? []).map((high) => (
-                <Typography>
-                  {' '}
-                  <span>{high.title} </span>
-                </Typography>
-              ))}
+
+              {(scanningResult.appsec.high ?? []).length > 0 && (
+                <>
+                  <Typography sx={{ textDecoration: 'underline', mb: 1, ml: 1 }}>
+                    Severe vulnerabilities
+                  </Typography>
+                  {(scanningResult.appsec.high ?? []).map((high, index) => (
+                    <Typography>
+                      {' '}
+                      <span
+                        style={{
+                          fontWeight: 'bold',
+                          color: 'red',
+                          marginLeft: '9px',
+                        }}
+                      >
+                        {`${index + 1}.`} {high.title}{' '}
+                      </span>
+                    </Typography>
+                  ))}
+                  <br />
+                </>
+              )}
+
+              {(scanningResult.appsec.hotspot ?? []).length > 0 && (
+                <>
+                  <Typography sx={{ textDecoration: 'underline', mb: 1, ml: 1 }}>
+                    High vulnerabilities
+                  </Typography>
+                  {(scanningResult.appsec.hotspot ?? []).map((hotspot, index) => (
+                    <Typography>
+                      {' '}
+                      <span
+                        style={{
+                          fontWeight: 'bold',
+                          color: 'orange',
+                          marginLeft: '9px',
+                        }}
+                      >
+                        {`${index + 1}.`} {hotspot.title}{' '}
+                      </span>
+                    </Typography>
+                  ))}
+                  <br />
+                </>
+              )}
+
+              {(scanningResult.appsec.info ?? []).length > 0 && (
+                <>
+                  <Typography sx={{ textDecoration: 'underline', mb: 1, ml: 1 }}>
+                    Legere vulnerabilities
+                  </Typography>
+                  {(scanningResult.appsec.info ?? []).map((info, index) => (
+                    <Typography>
+                      {' '}
+                      <span
+                        style={{
+                          marginLeft: '9px',
+                        }}
+                      >
+                        {`${index + 1}.`} {info.title}{' '}
+                      </span>
+                    </Typography>
+                  ))}
+                  <br />
+                </>
+              )}
+
               <br />
-              <Typography sx={{ textDecoration: 'underline' }}>Information</Typography>
+              <Typography sx={{ textDecoration: 'underline', fontSize: '18px' }}>
+                Information
+              </Typography>
               <br />
               <Stack direction="row" alignItems="start" justifyContent="space-between">
                 <Stack direction="column" alignItems="start" justifyContent="space-between">

@@ -3,10 +3,14 @@ import { Outlet, Navigate, useRoutes } from 'react-router-dom';
 
 import PublicLayout from 'src/layouts/auth';
 
-import DashboardLayout from '../layouts/dashboard';
+import ConnectedProtectedLayout from '../layouts/protected/connected';
 import PublishersProtectedLayout from '../layouts/protected/publishers';
+import DevelopersProtectedLayout from '../layouts/protected/developpers';
+import PublishersDashboardLayout from '../layouts/protected/publishers/dashboard';
+import DevelopersDashboardLayout from '../layouts/protected/developpers/dashboard';
 
 export const IndexPage = lazy(() => import('src/pages/home'));
+export const PublisherHomePage = lazy(() => import('src/pages/publisher_home'));
 export const AccountPage = lazy(() => import('src/pages/account'));
 export const ProfilePage = lazy(() => import('src/pages/profile'));
 export const MonetizationPage = lazy(() => import('src/pages/monetization'));
@@ -38,20 +42,30 @@ export default function Router() {
   return useRoutes([
     {
       element: (
-        <PublishersProtectedLayout>
-          <DashboardLayout>
+        <ConnectedProtectedLayout>
+          <Suspense>
+            <Outlet />
+          </Suspense>
+        </ConnectedProtectedLayout>
+      ),
+      children: [{ element: <IndexPage />, index: true }],
+    },
+    {
+      element: (
+        <DevelopersProtectedLayout>
+          <DevelopersDashboardLayout>
             <Suspense>
               <Outlet />
             </Suspense>
-          </DashboardLayout>
-        </PublishersProtectedLayout>
+          </DevelopersDashboardLayout>
+        </DevelopersProtectedLayout>
       ),
       children: [
-        { element: <IndexPage />, index: true },
-        { element: <AccountPage />, path: 'account' },
-        { element: <ProfilePage />, path: 'profile' },
-        { element: <MonetizationPage />, path: 'monetization' },
-        { element: <SettingsPage />, path: 'settings' },
+        { element: <IndexPage />, path: '/developer' },
+        { element: <AccountPage />, path: 'developer/account' },
+        { element: <ProfilePage />, path: 'developer/profile' },
+        { element: <MonetizationPage />, path: 'developer/monetization' },
+        { element: <SettingsPage />, path: 'developer/settings' },
 
         { element: <AppsPage />, path: 'apps' },
         { element: <AppPage />, path: 'apps/view/:id' },
@@ -60,15 +74,32 @@ export default function Router() {
         { element: <GamesPage />, path: 'games' },
         { element: <GamePage />, path: 'games/view/:id' },
         { element: <CreateGamePage />, path: 'games/create' },
-        
-        
-        { element: <BooksPage />, path: 'books' },
-        { element: <CreateBookPage />, path: 'books/create' },
 
         { element: <AddNewReleasePage />, path: 'apps/view/:id/add-release' },
         { element: <AddNewReleasePage />, path: 'games/view/:id/add-release' },
         { element: <ReleasePage />, path: '/games/view/:application_id/release/:id' },
         { element: <ReleasePage />, path: '/apps/view/:application_id/release/:id' },
+      ],
+    },
+    {
+      element: (
+        <PublishersProtectedLayout>
+          <PublishersDashboardLayout>
+            <Suspense>
+              <Outlet />
+            </Suspense>
+          </PublishersDashboardLayout>
+        </PublishersProtectedLayout>
+      ),
+      children: [
+        { element: <PublisherHomePage />, path: 'publisher' },
+        { element: <AccountPage />, path: 'publisher/account' },
+        { element: <ProfilePage />, path: 'publisher/profile' },
+        { element: <MonetizationPage />, path: 'publisher/monetization' },
+        { element: <SettingsPage />, path: 'publisher/settings' },
+
+        { element: <BooksPage />, path: 'books' },
+        { element: <CreateBookPage />, path: 'books/create' },
       ],
     },
     {

@@ -9,8 +9,10 @@ import { useAuth } from 'src/hooks/use_auth';
 import AccountPage from 'src/pages/account';
 import DashboardNoActionsLayout from 'src/layouts/dashboard/dashboard-no-actions';
 
-const PublishersProtectedLayout = ({ children }) => {
+const DevelopersProtectedLayout = ({ children }) => {
   const { user, status } = useAuth();
+
+  console.log('DevelopersProtectedLayout', user);
 
   if (status === 'idle' || status === 'pending') {
     return (
@@ -20,7 +22,7 @@ const PublishersProtectedLayout = ({ children }) => {
     );
   }
 
-  if (!user || user.role !== 'publisher') {
+  if (!user || user.role !== 'developer') {
     return <Navigate to="/login" />;
   }
 
@@ -35,8 +37,8 @@ const PublishersProtectedLayout = ({ children }) => {
   );
 };
 
-PublishersProtectedLayout.propTypes = {
+DevelopersProtectedLayout.propTypes = {
   children: PropTypes.node,
 };
 
-export default PublishersProtectedLayout;
+export default DevelopersProtectedLayout;

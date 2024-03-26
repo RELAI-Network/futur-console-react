@@ -64,18 +64,31 @@ export default function CreateNewApp() {
 
           // 2 - Presentation
           logo_image_square: 'Select your application main logo.',
-          cover_image_rect: 'Select your application cover image.',
-          // app_screenshots: ({ value, values }) => {
-          //   if (!value || (value ?? []).length < 2) {
-          //     return 'Add at least two screenshot.';
-          //   }
+          // cover_image_rect: 'Select your application cover image.',
+          app_screenshots: ({ value }) => {
+            if (!value || (value ?? []).length < 2) {
 
-          //   return undefined;
-          // },
+              return 'Add at least two screenshot.';
+            }
+
+            return undefined;
+          },
 
           // 3 - Additionnal
           tags: 'Add application tags.',
-          package_name: 'Add application Package Name',
+          package_name: ({ value }) => {
+            if (!value) {
+
+              return 'Add application Package Name';
+            }
+
+            if (value.startsWith('com.example')) {
+              return 'Package name must not start with "com.example"';
+            }
+
+            return undefined;
+          },
+
           min_age_requirement: 'Indicate min age requirement.',
         },
         setFieldError: (field, message) => {
@@ -90,8 +103,8 @@ export default function CreateNewApp() {
       form.setSubmitting(true);
 
       addNewApplication({ formData: form.data, categories, user })
-        .then((result) => {
-          router.push(`/apps/${result.id}`);
+        .then((applicationId) => {
+          router.push(`/apps/view/${applicationId}`);
         })
         .catch((e) => {
           form.setSubmitError(e?.message ?? 'An error occured.');
@@ -211,6 +224,7 @@ export default function CreateNewApp() {
                   if (file && file.type && file.type.startsWith('image/')) {
                     form.setFieldValue('logo_image_square', file);
                   } else {
+                    form.setFieldValue('logo_image_square', null);
                     form.setFieldError('logo_image_square', 'Select a valid image');
                   }
                 }}
@@ -219,7 +233,7 @@ export default function CreateNewApp() {
                 required
                 acceptedFileTypes={['image/*']}
                 name="logo_image_square"
-                labelIdle="App Logo Image"
+                labelIdle="App Logo Image *"
                 helperText="(512x512)"
               />
               <Typography color="error">{form.validationErrors.logo_image_square}</Typography>
@@ -239,15 +253,20 @@ export default function CreateNewApp() {
                 onupdatefiles={(files) => {
                   const file = files?.[0]?.file;
 
-                  if (file && file.type && file.type.startsWith('image/')) {
-                    form.setFieldValue('cover_image_rect', file);
+                  if (file) {
+                    if (file.type && file.type.startsWith('image/')) {
+                      form.setFieldValue('logo_image_square', file);
+                    } else {
+                      form.setFieldValue('logo_image_square', null);
+                      form.setFieldError('logo_image_square', 'Select a valid image');
+                    }
                   } else {
-                    form.setFieldError('cover_image_rect', 'Select a valid image');
+                    form.setFieldValue('logo_image_square', null);
+                    form.setFieldError('logo_image_square', '');
                   }
                 }}
                 allowMultiple={false}
                 maxFiles={1}
-                required
                 acceptedFileTypes={['image/*']}
                 name="cover_image_rect"
                 labelIdle="App Cover Image"
@@ -260,21 +279,20 @@ export default function CreateNewApp() {
                 label="App Screenshots"
                 files={form.data.app_screenshots ? form.data.app_screenshots : []}
                 onaddfilestart={({ file }) => {
-                  if (file && file.type && file.type.startsWith('image/')) {
-                    /* empty */
-                  } else {
-                    throw new Error('Select a valid image');
+                  if (file) {
+                    if (file.type && file.type.startsWith('image/')) {
+                      /* empty */
+                    } else {
+                      throw new Error('Select a valid image');
+                    }
                   }
                 }}
-                onupdatefiles={(files) => {
-                  const file = files?.[0]?.file;
-                  const prevScreenShoots = form.data.app_screenshots ?? [];
+                onupdatefiles={(filepondFiles) => {
+                  const files = filepondFiles
+                    .map(({ file }) => file)
+                    .filter((file) => file.type && file.type.startsWith('image/'));
                   debugger;
-                  if (file && file.type && file.type.startsWith('image/')) {
-                    form.setFieldValue('app_screenshots', [...prevScreenShoots, file]);
-                  } else {
-                    form.setFieldError('app_screenshots', 'Select a valid image');
-                  }
+                  form.setFieldValue('app_screenshots', files);
                 }}
                 allowMultiple
                 maxFiles={8}

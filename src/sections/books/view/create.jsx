@@ -1,4 +1,5 @@
 /* eslint-disable no-debugger */
+import { toInteger } from 'lodash';
 import 'filepond/dist/filepond.min.css';
 import { FilePond, registerPlugin } from 'react-filepond';
 import FilePondPluginImagePreview from 'filepond-plugin-image-preview';
@@ -27,7 +28,8 @@ import FormSelect from 'src/components/form/select';
 import RadioInput from 'src/components/form/radio_input';
 import CircularLoader from 'src/components/loader/CircularLoader';
 
-import { getTags, getBooksCategories, addAndPublishNewBookEdition } from '../services/firestore';
+import { bookTypes, bookGenres, bookLanguages } from '../constants';
+import { getBooksCategories, addAndPublishNewBookEdition } from '../services/firestore';
 
 // Register the plugins
 registerPlugin(
@@ -38,47 +40,50 @@ registerPlugin(
 
 // ----------------------------------------------------------------------
 
-export default function CreateNewApp() {
-  const form = useFormValidation({
-    contains_ads: false,
-    has_in_app_purchases: false,
-  });
+export default function CreateNewBook() {
+  const form = useFormValidation({ is_free: true, min_age_requirement: 12 });
 
   const { user } = useAuth();
 
   const router = useRouter();
 
   const { data: categories, loading: loadingCategories } = usePromise(getBooksCategories);
-  const { data: tags, loading: loadingTags } = usePromise(getTags);
 
-  const createAppFunc = async () => {
+  const createBookFunc = async () => {
     if (
       await validateSchemas({
         validationSchemas: {
           // 1 - Information
-          name: 'Enter application name.',
-          category_id: 'Choose application category.',
-          email: 'Enter valid email.',
-          website: 'Enter valid website.',
-          description: 'Enter app description.',
+          title: 'Enter book title.',
+          type: 'Select book type.',
+          category_id: 'Select book category.',
+          description: 'Enter book description.',
+          resume: 'Enter book resume.',
 
           // 2 - Presentation
-          logo_image_square: 'Select your application main logo.',
-          cover_image_rect: 'Select your application cover image.',
-          app_screenshots: ({ value, values }) => {
-            if (!value || (value ?? []).length < 2) {
-              return 'Add at least two screenshot.';
-            }
-
-            return undefined;
-          },
+          cover_image: 'Select your book cover image.',
+          ebook_file: 'Fill in your book file.',
 
           // 3 - Additionnal
-          tags: 'Add application tags.',
-          package_name: 'Add application Package Name',
+          authors: 'Add book authors.',
           min_age_requirement: 'Indicate min age requirement.',
+          is_free: 'Indicates if the book is free.',
+          price: ({ value, values }) => {
+            if (values.is_free) {
+              return undefined;
+            }
+
+            if (!value) {
+              return 'Enter book price.';
+            }
+
+            return toInteger(`${value}`) > 0 ? undefined : 'Enter valid price.';
+          },
+          genre: 'Indicate book genre.',
+          language: 'Indicate book language.',
         },
         setFieldError: (field, message) => {
+          console.log(field, message);
           form.setFieldError(field, message);
 
           form.setSubmitError(message);
@@ -89,9 +94,23 @@ export default function CreateNewApp() {
     ) {
       form.setSubmitting(true);
 
-      addAndPublishNewBookEdition({ formData: form.data, categories, user })
-        .then((result) => {
-          router.push(`/apps/${result.id}`);
+      addAndPublishNewBookEdition({
+        book_file: form.data.ebook_file,
+        book_file_name: form.data.ebook_file.name,
+        book_file_extension: form.data.ebook_file.name.split('.').pop(),
+
+        book_cover_file: form.data.cover_image,
+        book_cover_file_name: form.data.cover_image.name,
+
+        publisher_id: user.publisher_id,
+        publisher_name: user.publisher_name ?? user.web3_account_name,
+
+        categories,
+
+        ...{ ...form.data, is_free: `${form.data.is_free ?? true}` === 'true' },
+      })
+        .then((bookId) => {
+          router.push(`/books/view/${bookId}`);
         })
         .catch((e) => {
           form.setSubmitError(e?.message ?? 'An error occured.');
@@ -106,10 +125,10 @@ export default function CreateNewApp() {
 
   return (
     <Container maxWidth="xl">
-      <Typography variant="h4">Create new application</Typography>
+      <Typography variant="h4">Add new book</Typography>
       <Divider color="primary" />
       <br />
-      {loadingCategories || loadingTags ? (
+      {loadingCategories ? (
         <CircularLoader />
       ) : (
         <Box>
@@ -121,14 +140,38 @@ export default function CreateNewApp() {
 
             <Grid item xs={12} md={6}>
               <TextField
-                name="name"
-                label="Name"
+                name="title"
+                label="Title"
                 required
-                helperText={form.validationErrors.name}
-                error={!!form.validationErrors.name}
-                onChange={(e) => form.setFieldValue('name', e.target.value)}
+                helperText={form.validationErrors.title}
+                error={!!form.validationErrors.title}
+                onChange={(e) => form.setFieldValue('title', e.target.value)}
                 size="small"
                 fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                name="isbn"
+                label="ISBN"
+                helperText={form.validationErrors.isbn}
+                error={!!form.validationErrors.isbn}
+                onChange={(e) => form.setFieldValue('isbn', e.target.value)}
+                size="small"
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormSelect
+                onChange={(value) => {
+                  form.setFieldValue('type', value);
+                }}
+                label="Type *"
+                name="type"
+                items={bookTypes}
+                error={form.validationErrors.type}
+                helperText={form.validationErrors.type}
+                defaultValue={form.data.type}
               />
             </Grid>
             <Grid item xs={12} md={6}>
@@ -147,30 +190,7 @@ export default function CreateNewApp() {
                 defaultValue={form.data.category_id}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                name="email"
-                label="Email"
-                required
-                helperText={form.validationErrors.email}
-                error={!!form.validationErrors.email}
-                onChange={(e) => form.setFieldValue('email', e.target.value)}
-                size="small"
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                name="website"
-                label="Website"
-                required
-                helperText={form.validationErrors.website}
-                error={!!form.validationErrors.website}
-                onChange={(e) => form.setFieldValue('website', e.target.value)}
-                size="small"
-                fullWidth
-              />
-            </Grid>
+
             <Grid item xs={12}>
               <TextField
                 name="description"
@@ -180,6 +200,19 @@ export default function CreateNewApp() {
                 error={!!form.validationErrors.description}
                 onChange={(e) => form.setFieldValue('description', e.target.value)}
                 size="medium"
+                fullWidth
+                minRows={3}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                name="resume"
+                label="Resume"
+                required
+                helperText={form.validationErrors.resume}
+                error={!!form.validationErrors.resume}
+                onChange={(e) => form.setFieldValue('resume', e.target.value)}
+                size="large"
                 fullWidth
                 multiline
                 minRows={3}
@@ -196,8 +229,8 @@ export default function CreateNewApp() {
             </Grid>
             <Grid item xs={12} md={6}>
               <FilePond
-                label="App Logo Image (512x512)"
-                files={form.data.logo_image_square ? [form.data.logo_image_square] : []}
+                label="Book Cover Image"
+                files={form.data.cover_image ? [form.data.cover_image] : []}
                 onaddfilestart={({ file }) => {
                   if (file && file.type && file.type.startsWith('image/')) {
                     /* empty */
@@ -209,93 +242,60 @@ export default function CreateNewApp() {
                   const file = files?.[0]?.file;
 
                   if (file && file.type && file.type.startsWith('image/')) {
-                    form.setFieldValue('logo_image_square', file);
+                    form.setFieldValue('cover_image', file);
                   } else {
-                    form.setFieldError('logo_image_square', 'Select a valid image');
+                    form.setFieldError('cover_image', 'Select a valid image');
                   }
                 }}
                 allowMultiple={false}
                 maxFiles={1}
                 required
                 acceptedFileTypes={['image/*']}
-                name="logo_image_square"
-                labelIdle="App Logo Image"
-                helperText="(512x512)"
+                name="cover_image"
+                labelIdle="Book Cover Image"
               />
-              <Typography color="error">{form.validationErrors.logo_image_square}</Typography>
+              <Typography color="error">{form.validationErrors.cover_image}</Typography>
             </Grid>
 
             <Grid item xs={12} md={6}>
               <FilePond
-                label="App Cover Image (1000x512)"
-                files={form.data.cover_image_rect ? [form.data.cover_image_rect] : []}
+                files={form.data.ebook_file ? [form.data.ebook_file] : []}
+                onremovefile={() => {
+                  form.setFieldValue('ebook_file', null);
+                }}
                 onaddfilestart={({ file }) => {
-                  if (file && file.type && file.type.startsWith('image/')) {
+                  if (
+                    file &&
+                    file.type &&
+                    (file.type === 'application/pdf' || file.type === 'application/epub+zip')
+                  ) {
                     /* empty */
                   } else {
-                    throw new Error('Select a valid image');
+                    throw new Error('Select a valid ebook document file.');
                   }
                 }}
                 onupdatefiles={(files) => {
                   const file = files?.[0]?.file;
 
-                  if (file && file.type && file.type.startsWith('image/')) {
-                    form.setFieldValue('cover_image_rect', file);
-                  } else {
-                    form.setFieldError('cover_image_rect', 'Select a valid image');
+                  if (file) {
+                    if (
+                      file.type &&
+                      (file.type === 'application/pdf' || file.type === 'application/epub+zip')
+                    ) {
+                      form.setFieldValue('ebook_file', file);
+                    } else {
+                      form.setFieldError('ebook_file', 'Select a valid ebook document file.');
+                    }
                   }
                 }}
                 allowMultiple={false}
                 maxFiles={1}
                 required
-                acceptedFileTypes={['image/*']}
-                name="cover_image_rect"
-                labelIdle="App Cover Image"
-                helperText="Image should be (1000x512)"
+                acceptedFileTypes={['application/pdf', 'application/epub+zip']}
+                name="ebook_file"
+                labelIdle="Ebook Document File"
               />
-              <Typography color="error">{form.validationErrors.cover_image_rect}</Typography>
-            </Grid>
-            <Grid item xs={12}>
-              <FilePond
-                label="App Screenshots"
-                files={form.data.app_screenshots ? form.data.app_screenshots : []}
-                onaddfilestart={({ file }) => {
-                  if (file && file.type && file.type.startsWith('image/')) {
-                    /* empty */
-                  } else {
-                    throw new Error('Select a valid image');
-                  }
-                }}
-                onupdatefiles={(files) => {
-                  const file = files?.[0]?.file;
-                  const prevScreenShoots = form.data.app_screenshots ?? [];
-                  debugger;
-                  if (file && file.type && file.type.startsWith('image/')) {
-                    form.setFieldValue('app_screenshots', [...prevScreenShoots, file]);
-                  } else {
-                    form.setFieldError('app_screenshots', 'Select a valid image');
-                  }
-                }}
-                allowMultiple
-                maxFiles={8}
-                required
-                acceptedFileTypes={['image/*']}
-                name="app_screenshots"
-                labelIdle="App Screenshots"
-                helperText="At least two screenshots"
-              />
-              <Typography color="error">{form.validationErrors.app_screenshots}</Typography>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                name="video_trailer_url"
-                label="Video Trailer URL"
-                helperText={form.validationErrors.video_trailer_url}
-                error={!!form.validationErrors.video_trailer_url}
-                onChange={(e) => form.setFieldValue('video_trailer_url', e.target.value)}
-                size="small"
-                fullWidth
-              />
+              <Typography color="error">{form.validationErrors.ebook_file}</Typography>
             </Grid>
           </Grid>
           <br />
@@ -307,48 +307,17 @@ export default function CreateNewApp() {
               <Typography variant="h6">3. Additionnal</Typography>
             </Grid>
             <Grid item xs={6}>
-              <FormSelect
-                onChange={(value) => {
-                  const prevTags = form.data.tags ?? [];
-                  debugger;
-                  form.setFieldValue('tags', [...prevTags, value]);
-                }}
-                multiple
-                label="Tags *"
-                name="tags"
-                items={(tags ?? []).map((i) => ({
-                  label: i.label,
-                  value: i.id,
-                }))}
-                error={form.validationErrors.tags}
-                helperText={form.validationErrors.tags}
-                defaultValue={form.data.tags ?? []}
+              <TextField
+                name="authors"
+                label="Authors"
+                required
+                helperText={form.validationErrors.authors}
+                error={!!form.validationErrors.authors}
+                onChange={(e) => form.setFieldValue('authors', e.target.value)}
+                size="small"
+                fullWidth
               />
             </Grid>
-            <Grid item xs={12} md={6}>
-              <RadioInput
-                row
-                sx={{ marginY: 1, flexDirection: 'row' }}
-                labelSx={{ marginY: 'auto', marginRight: 'auto' }}
-                error={form.validationErrors.contains_ads}
-                helperText={form.validationErrors.contains_ads}
-                label="Contains ads"
-                variant="outlined"
-                items={[
-                  { label: 'YES', value: true },
-                  { label: 'NO', value: false },
-                ]}
-                onChange={(value) => {
-                  form.setFieldValue('contains_ads', value);
-                }}
-                id="contains_ads"
-                value={form.data.contains_ads}
-                itemValueBuilder={(item) => item.value}
-                itemLabelBuilder={(item) => item.label}
-                name="contains_ads"
-              />
-            </Grid>
-
             <Grid item xs={12} md={6}>
               <TextField
                 name="min_age_requirement"
@@ -367,46 +336,63 @@ export default function CreateNewApp() {
                 row
                 sx={{ marginY: 1, flexDirection: 'row' }}
                 labelSx={{ marginY: 'auto', marginRight: 'auto' }}
-                error={form.validationErrors.has_in_app_purchases}
-                helperText={form.validationErrors.has_in_app_purchases}
-                label="Has in app purchases"
+                error={form.validationErrors.is_free}
+                helperText={form.validationErrors.is_free}
+                label="Is free"
                 variant="outlined"
                 items={[
                   { label: 'YES', value: true },
                   { label: 'NO', value: false },
                 ]}
                 onChange={(value) => {
-                  form.setFieldValue('has_in_app_purchases', value);
+                  form.setFieldValue('is_free', value);
                 }}
-                id="has_in_app_purchases"
-                value={form.data.has_in_app_purchases}
+                id="is_free"
+                value={form.data.is_free}
                 itemValueBuilder={(item) => item.value}
                 itemLabelBuilder={(item) => item.label}
-                name="has_in_app_purchases"
+                name="is_free"
               />
             </Grid>
-
             <Grid item xs={12} md={6}>
-              <TextField
-                name="package_name"
-                label="Package name"
-                helperText={form.validationErrors.package_name}
-                error={!!form.validationErrors.package_name}
-                onChange={(e) => form.setFieldValue('package_name', e.target.value)}
-                size="small"
-                fullWidth
+              {`${form.data.is_free ?? true}` === 'true' ? null : (
+                <TextField
+                  name="price"
+                  label="Price in $"
+                  type="number"
+                  required
+                  helperText={form.validationErrors.price}
+                  error={!!form.validationErrors.price}
+                  onChange={(e) => form.setFieldValue('price', e.target.value)}
+                  size="small"
+                  fullWidth
+                />
+              )}
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormSelect
+                onChange={(value) => {
+                  form.setFieldValue('language', value);
+                }}
+                label="Language *"
+                name="language"
+                items={bookLanguages}
+                error={form.validationErrors.language}
+                helperText={form.validationErrors.language}
+                defaultValue={form.data.language}
               />
             </Grid>
-
             <Grid item xs={12} md={6}>
-              <TextField
-                name="privacy_policy_link"
-                label="Privacy policy Link"
-                helperText={form.validationErrors.privacy_policy_link}
-                error={!!form.validationErrors.privacy_policy_link}
-                onChange={(e) => form.setFieldValue('privacy_policy_link', e.target.value)}
-                size="small"
-                fullWidth
+              <FormSelect
+                onChange={(value) => {
+                  form.setFieldValue('genre', value);
+                }}
+                label="Genre *"
+                name="genre"
+                items={bookGenres}
+                error={form.validationErrors.genre}
+                helperText={form.validationErrors.genre}
+                defaultValue={form.data.genre}
               />
             </Grid>
           </Grid>
@@ -422,9 +408,9 @@ export default function CreateNewApp() {
         variant="contained"
         color="inherit"
         loading={form.submitting}
-        onClick={createAppFunc}
+        onClick={createBookFunc}
       >
-        Create new application
+        Add new book
       </LoadingButton>
     </Container>
   );

@@ -119,6 +119,40 @@ async function getAllWhere(collectionName, field, operator = '==', value) {
   }
 }
 
+/**
+ * Retrieves documents from a Firestore collection based on the specified queries.
+ *
+ * @param {string} collectionName - The name of the Firestore collection.
+ * @param {Array<Array<string>>} queries - An array of queries, where each query is an array of three elements: field, operator, and value.
+ * @returns {Promise<Array<Object>>} - A promise that resolves to an array of documents, where each document is an object containing the document ID and its data.
+ * @throws {FirestoreError} - If there is an error retrieving the documents from Firestore.
+ */
+async function getAllWheres(collectionName, queries) {
+  try {
+    let queryRef = collection(db, collectionName);
+
+    queries.forEach((q) => {
+      queryRef = query(queryRef, where(q[0], q[1], q[2]));
+    });
+
+    const querySnapshot = await getDocs(queryRef);
+
+    const documents = [];
+
+    querySnapshot.forEach((document) => {
+      documents.push({ id: document.id, ...document.data() });
+    });
+
+    return documents;
+  } catch (error) {
+    console.error('Error getting document: ', error);
+
+    const errorMessage = getFirestoreErrorMessage(error.code);
+
+    throw new FirestoreError(errorMessage);
+  }
+}
+
 // Function to update a document in a collection
 async function updateDocument(collectionName, documentId, data) {
   try {
@@ -149,4 +183,4 @@ async function deleteDocument(collectionName, documentId) {
   }
 }
 
-export { getAll, addDocument, getDocument, getAllWhere, updateDocument, deleteDocument };
+export { getAll, addDocument, getDocument, getAllWhere, getAllWheres, updateDocument, deleteDocument };

@@ -19,12 +19,11 @@ import Logo from 'src/components/logo';
 import Scrollbar from 'src/components/scrollbar';
 
 import { NAV } from './config-layout';
-import navConfig from './config-navigation';
 import { useAuth } from '../../hooks/use_auth';
 
 // ----------------------------------------------------------------------
 
-export default function Nav({ noActions = false, openNav, onCloseNav }) {
+export default function Nav({ noActions = false, openNav, onCloseNav, navConfig = [] }) {
   const pathname = usePathname();
 
   const { user } = useAuth();
@@ -62,7 +61,7 @@ export default function Nav({ noActions = false, openNav, onCloseNav }) {
   const renderMenu = (
     <Stack component="nav" spacing={0.5} sx={{ px: 2 }}>
       {navConfig.map((item) => (
-        <NavItem key={item.title} item={item} disabled={noActions}  />
+        <NavItem key={item.title} item={item} disabled={noActions} />
       ))}
     </Stack>
   );
@@ -138,6 +137,7 @@ export default function Nav({ noActions = false, openNav, onCloseNav }) {
 
 Nav.propTypes = {
   openNav: PropTypes.bool,
+  navConfig: PropTypes.array,
   onCloseNav: PropTypes.func,
   noActions: PropTypes.bool,
 };
@@ -147,7 +147,7 @@ Nav.propTypes = {
 function NavItem({ item, disabled = false }) {
   const pathname = usePathname();
 
-  const active = item.path === pathname;
+  const active = item.path === pathname || (item.path !== '/' && pathname?.startsWith(item.path));
 
   return (
     <ListItemButton

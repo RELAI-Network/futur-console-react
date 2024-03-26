@@ -15,6 +15,7 @@ import { bgGradient } from 'src/theme/css';
 
 import Logo from 'src/components/logo';
 import Iconify from 'src/components/iconify';
+import FormSelect from 'src/components/form/select';
 
 import { useAuth } from '../../hooks/use_auth';
 import { validateSchemas } from '../../utils/forms/validator';
@@ -68,6 +69,26 @@ export default function SignUpView() {
   const renderForm = (
     <>
       <Stack spacing={3}>
+        <FormSelect
+          onChange={(value) => {
+            form.setFieldValue('role', value);
+          }}
+          label="Account Type *"
+          name="role"
+          items={[
+            {
+              label: 'Developer',
+              value: 'developer',
+            },
+            {
+              label: 'Publisher',
+              value: 'publisher',
+            },
+          ]}
+          error={form.validationErrors.role}
+          helperText={form.validationErrors.role}
+          defaultValue={form.data.role}
+        />
         <TextField
           name="name"
           label="Name"

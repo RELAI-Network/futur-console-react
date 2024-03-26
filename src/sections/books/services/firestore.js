@@ -147,88 +147,75 @@ export async function addAndPublishNewBookEdition({
   ...formData
 }) {
   try {
-    const mobsfResponse = await uploadToMobSF(book_file);
-
-    const { appsec, ...props } = await scanMobSF(mobsfResponse.hash);
-
     if (!book_id) {
       book_id = await addNewBook({ publisher_id, publisher_name, ...formData });
     }
 
-    if ((appsec?.security_score ?? 0) > 50) {
-      const bookCoverFileUrl = await uploadFile({
-        filePath: `developers/${publisher_id}/bookss/${book_id}/editions/covers/${book_cover_file_name}`,
-        file: book_cover_file,
-      });
+    const bookCoverFileUrl = await uploadFile({
+      filePath: `developers/${publisher_id}/books/${book_id}/editions/covers/${book_cover_file_name}`,
+      file: book_cover_file,
+    });
 
-      const bookFileUrl = await uploadFile({
-        filePath: `developers/${publisher_id}/bookss/${book_id}/editions/${book_file_name}.${book_file_extension}`,
-        file: book_file,
-      });
+    const bookFileUrl = await uploadFile({
+      filePath: `developers/${publisher_id}/books/${book_id}/editions/${book_file_name}.${book_file_extension}`,
+      file: book_file,
+    });
 
-      const { authors, isbn, language, price, type, title, resume } = formData;
+    const { authors, isbn, language, price, type, title, resume } = formData;
 
-      const documentId = await addDocument(`${booksCollection}/${book_id}/editions`, {
-        cover_url: bookCoverFileUrl,
-        file_extension: book_file_extension,
-        file_main_url: bookFileUrl,
-        authors,
-        isbn,
-        book_id,
-        resume,
-        title,
-        price,
-        type,
-        language,
-        scan_virus_total: props.virus_total,
-        scan_version_name: props.version_name,
-        scan_version_code: props.version_code,
-        scan_version: props.version,
-        scan_size: props.size,
-        scan_hash: appsec.hash,
-        scan_score: appsec.security_score,
-        scan_security_score: appsec.security_score,
-        published: true,
-        published_at: Timestamp.now(),
-      });
+    const documentId = await addDocument(`${booksCollection}/${book_id}/editions`, {
+      cover_url: bookCoverFileUrl,
+      file_extension: book_file_extension,
+      file_main_url: bookFileUrl,
+      authors,
+      isbn,
+      book_id,
+      resume,
+      title,
+      price,
+      type,
+      language,
 
-      await updateDocument(booksCollection, book_id, {
-        actual_edition_id: documentId,
-        status: 'published',
-        published: true,
-        updated_at: Timestamp.now(),
+      published: true,
+      published_at: Timestamp.now(),
+    });
 
-        cover_url: bookCoverFileUrl,
-        file_main_url: bookFileUrl,
-        authors,
-        isbn,
-        book_id,
-        resume,
-        title,
-        price,
-        type,
-        language,
-      });
+    await updateDocument(booksCollection, book_id, {
+      actual_edition_id: documentId,
+      status: 'published',
+      published: true,
+      published_at: Timestamp.now(),
+      updated_at: Timestamp.now(),
 
-      let editions = await getBookEditions(book_id);
+      cover_url: bookCoverFileUrl,
+      file_main_url: bookFileUrl,
+      authors,
+      isbn,
+      book_id,
+      resume,
+      title,
+      price,
+      type,
+      language,
+    });
 
-      editions = editions.filter((book) => book.id !== documentId);
+    let editions = await getBookEditions(book_id);
 
-      if (editions.length > 1) {
-        // eslint-disable-next-line no-plusplus
-        for (let index = 0; index < editions.length; index++) {
-          const edition = editions[index];
-          // eslint-disable-next-line no-await-in-loop
-          await updateDocument(`${booksCollection}/${book_id}/editions`, edition.id, {
-            published: false,
-            ...(edition.published ? { un_published_at: Timestamp.now() } : {}),
-          });
-        }
+    editions = editions.filter((book) => book.id !== documentId);
+
+    if (editions.length > 1) {
+      // eslint-disable-next-line no-plusplus
+      for (let index = 0; index < editions.length; index++) {
+        const edition = editions[index];
+        // eslint-disable-next-line no-await-in-loop
+        await updateDocument(`${booksCollection}/${book_id}/editions`, edition.id, {
+          published: false,
+          ...(edition.published ? { un_published_at: Timestamp.now() } : {}),
+        });
       }
-
-      return documentId;
     }
-    throw new Error(`Security score of book is too low : ${appsec?.security_score}`);
+
+    return documentId;
   } catch (error) {
     console.error(error);
 
@@ -311,6 +298,7 @@ export async function addNewBook({ publisher_id, publisher_name, ...formData }) 
       language,
       publisher_id,
       publisher_name,
+      created_at: Timestamp.now(),
       published: false,
       published_at: null,
     });

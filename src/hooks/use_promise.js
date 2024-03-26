@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export default function usePromise(promise) {
+export default function usePromise(promise, deps = []) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,7 +16,7 @@ export default function usePromise(promise) {
         setLoading(false);
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, deps);
 
   return { data, loading, error, isError : !!error };
 }

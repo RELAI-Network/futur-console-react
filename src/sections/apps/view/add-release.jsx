@@ -18,6 +18,7 @@ import TextField from '@mui/material/TextField';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import LoadingButton from '@mui/lab/LoadingButton';
+import LinearProgress from '@mui/material/LinearProgress';
 
 import { useRouter } from 'src/routes/hooks';
 
@@ -27,6 +28,7 @@ import usePromise from 'src/hooks/use_promise';
 import { validateSchemas } from 'src/utils/forms/validator';
 import { useFormValidation } from 'src/utils/forms/hooks/useFormValidation';
 
+import Iconify from 'src/components/iconify';
 import CircularLoader from 'src/components/loader/CircularLoader';
 
 import { getDeveloperApplication, addNewApplicationRelease } from '../services/firestore';
@@ -53,6 +55,10 @@ export default function AddNewReleaseView() {
     getDeveloperApplication({ applicationId })
   );
 
+  const onUploadProgress = (progress) => {
+    form.setFieldValue('package_file_upload_progress', progress);
+  };
+
   function loadApplicationPackageInfo(file) {
     form.setFieldValue('package_file_info', null);
 
@@ -63,6 +69,7 @@ export default function AddNewReleaseView() {
           icon: appPackageInfo.icon,
           label: appPackageInfo.application.label,
           package: appPackageInfo.package,
+          version_code: appPackageInfo.versionCode,
           version: appPackageInfo.versionName,
           modifiedAt: file.lastModifiedDate,
           size: file.size,
@@ -70,13 +77,15 @@ export default function AddNewReleaseView() {
         };
 
         if (applicationInfo.package === application.package_name) {
-        // if (true) {
+          // if (true) {
           form.setFieldValue('package_file_info', applicationInfo);
           form.setFieldValue('version', applicationInfo.version);
         } else {
+          // form.setFieldValue('package_file_info', null);
+          // form.setFieldValue('package_file', null);
           form.setFieldError(
             'package_file',
-            'Your application package is not compatible with the application.'
+            `Your apk file package name (${applicationInfo.package}) and application package name (${application.package_name}) are not compatible.`
           );
         }
       })
@@ -107,10 +116,12 @@ export default function AddNewReleaseView() {
       form.setSubmitting(true);
 
       addNewApplicationRelease({
+        onUploadProgress,
         publisher_id: user.publisher_id,
         formData: {
           package_file: form.data.package_file,
           version: form.data.package_file_info.version,
+          version_code: form.data.package_file_info.version_code,
           package_icon: form.data.package_file_info.icon,
           label: form.data.package_file_info.label,
           updated_at: form.data.package_file_info.modifiedAt,
@@ -121,9 +132,8 @@ export default function AddNewReleaseView() {
         application_id: applicationId,
         app_type: application.app_type,
       })
-        .then((result) => {
-          // router.push(`/apps/${result.id}`);
-          router.push(`/${application.app_type}s/view/${applicationId}`);
+        .then((releaseId) => {
+          router.push(`/${application.app_type}s/view/${applicationId}/release/${releaseId}`);
         })
         .catch((e) => {
           form.setSubmitError(e?.message ?? 'An error occured.');
@@ -138,7 +148,18 @@ export default function AddNewReleaseView() {
 
   return (
     <Container maxWidth="xl">
-      <Typography variant="h4">Add new release</Typography>
+      <Stack mb={1} direction="row" alignItems="center" justifyContent="start">
+        <Iconify
+          color="primary"
+          sx={{ mr: 1 }}
+          icon="material-symbols:arrow-back-ios"
+          width={24}
+          height={24}
+          onClick={() => router.push(`/${application?.app_type ?? 'app'}s/view/${applicationId}`)}
+          cursor="pointer"
+        />
+        <Typography variant="h4">Add new release</Typography>
+      </Stack>
       <Divider color="primary" />
       <br />
       {applicationLoading ? (
@@ -247,6 +268,12 @@ export default function AddNewReleaseView() {
                         </span>
                       </Typography>
                       <Typography>
+                        Version Code :{' '}
+                        <span style={{ fontWeight: 'bold' }}>
+                          {form.data.package_file_info.version_code}
+                        </span>
+                      </Typography>
+                      <Typography>
                         Size :{' '}
                         <span style={{ fontWeight: 'bold' }}>
                           {`${form.data.package_file_info.sizeRounded} Mo`}
@@ -264,7 +291,8 @@ export default function AddNewReleaseView() {
                       </Typography>
                     </Stack>
                   </Stack>
-                ) : (
+                ) : form.validationErrors.package_file ??
+                  form.validationErrors.package_file_info ? null : (
                   <CircularLoader />
                 )
               ) : null}
@@ -287,7 +315,36 @@ export default function AddNewReleaseView() {
         </Box>
       )}
       <br />
-      <Typography color="error">{form.submitError}</Typography>
+      {form.submitting ? (
+        form.data.package_file_upload_progress ? (
+          form.data.package_file_upload_progress === 100 ? (
+            <Typography align="center">Finalizing...</Typography>
+          ) : (
+            <Stack>
+              <LinearProgress
+                variant="determinate"
+                color="primary"
+                value={form.data.package_file_upload_progress}
+                sx={{
+                  height: 6,
+                  borderRadius: 2,
+                  backgroundColor: '#E9EEEF',
+                  mb: 1,
+                }}
+              />
+              <Typography align="center">Uploading application file...</Typography>
+            </Stack>
+          )
+        ) : (
+          <Typography align="center">Processing application file pre-analysis...</Typography>
+        )
+      ) : (
+        form.submitError && (
+          <Typography align="center" color="error">
+            {form.submitError}
+          </Typography>
+        )
+      )}
       <br />
       <LoadingButton
         fullWidth

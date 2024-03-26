@@ -33,7 +33,7 @@ export default function AccountView() {
               <img src="/assets/icons/navbar/account.svg" alt="Account" width={45} />{' '}
               <Box ml={2}>
                 <Typography>
-                  Developper / Publisher Id :{' '}
+                  {`${user.role[0].toUpperCase() + user.role.slice(1)} Id`} :{' '}
                   <span style={{ fontWeight: 'bold' }}>{user.publisher_id}</span>
                 </Typography>
                 <Typography>

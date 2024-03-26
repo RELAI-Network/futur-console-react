@@ -3,13 +3,15 @@ import PropTypes from 'prop-types';
 
 import Box from '@mui/material/Box';
 
-import Nav from './nav';
-import Main from './main';
-import Header from './header';
+import Nav from 'src/layouts/dashboard/nav';
+import Main from 'src/layouts/dashboard/main';
+import Header from 'src/layouts/dashboard/header';
+
+import navConfig from './config-navigation';
 
 // ----------------------------------------------------------------------
 
-export default function DashboardLayout({ children }) {
+export default function PublishersDashboardLayout({ children }) {
   const [openNav, setOpenNav] = useState(false);
 
   return (
@@ -23,7 +25,7 @@ export default function DashboardLayout({ children }) {
           flexDirection: { xs: 'column', lg: 'row' },
         }}
       >
-        <Nav openNav={openNav} onCloseNav={() => setOpenNav(false)} />
+        <Nav navConfig={navConfig} openNav={openNav} onCloseNav={() => setOpenNav(false)} />
 
         <Main>{children}</Main>
       </Box>
@@ -31,6 +33,6 @@ export default function DashboardLayout({ children }) {
   );
 }
 
-DashboardLayout.propTypes = {
+PublishersDashboardLayout.propTypes = {
   children: PropTypes.node,
 };

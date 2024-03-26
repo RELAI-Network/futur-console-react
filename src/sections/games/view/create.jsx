@@ -27,7 +27,9 @@ import FormSelect from 'src/components/form/select';
 import RadioInput from 'src/components/form/radio_input';
 import CircularLoader from 'src/components/loader/CircularLoader';
 
-import { getTags, addNewGame, getGamesCategories } from '../services/firestore';
+import { getTags } from 'src/sections/apps/services/firestore';
+
+import { addNewGame, getGamesCategories } from '../services/firestore';
 
 // Register the plugins
 registerPlugin(
@@ -64,18 +66,30 @@ export default function CreateNewGame() {
 
           // 2 - Presentation
           logo_image_square: 'Select your game main logo.',
-          cover_image_rect: 'Select your game cover image.',
-          // app_screenshots: ({ value, values }) => {
-          //   if (!value || (value ?? []).length < 2) {
-          //     return 'Add at least two screenshot.';
-          //   }
+          // cover_image_rect: 'Select your game cover image.',
+          app_screenshots: ({ value }) => {
+            if (!value || (value ?? []).length < 2) {
+              return 'Add at least two screenshot.';
+            }
 
-          //   return undefined;
-          // },
+            return undefined;
+          },
 
           // 3 - Additionnal
           tags: 'Add game tags.',
-          package_name: 'Add game Package Name',
+
+          package_name: ({ value }) => {
+            if (!value) {
+              return 'Add application Package Name';
+            }
+
+            if (value.startsWith('com.example')) {
+              return 'Package name must not start with "com.example"';
+            }
+
+            return undefined;
+          },
+
           min_age_requirement: 'Indicate min age requirement.',
         },
         setFieldError: (field, message) => {
@@ -90,8 +104,8 @@ export default function CreateNewGame() {
       form.setSubmitting(true);
 
       addNewGame({ formData: form.data, categories, user })
-        .then((result) => {
-          router.push(`/games/${result.id}`);
+        .then((gameId) => {
+          router.push(`/games/view/${gameId}`);
         })
         .catch((e) => {
           form.setSubmitError(e?.message ?? 'An error occured.');
@@ -208,10 +222,16 @@ export default function CreateNewGame() {
                 onupdatefiles={(files) => {
                   const file = files?.[0]?.file;
 
-                  if (file && file.type && file.type.startsWith('image/')) {
-                    form.setFieldValue('logo_image_square', file);
+                  if (file) {
+                    if (file.type && file.type.startsWith('image/')) {
+                      form.setFieldValue('logo_image_square', file);
+                    } else {
+                      form.setFieldValue('logo_image_square', null);
+                      form.setFieldError('logo_image_square', 'Select a valid image');
+                    }
                   } else {
-                    form.setFieldError('logo_image_square', 'Select a valid image');
+                    form.setFieldValue('logo_image_square', null);
+                    form.setFieldError('logo_image_square', '');
                   }
                 }}
                 allowMultiple={false}
@@ -242,12 +262,12 @@ export default function CreateNewGame() {
                   if (file && file.type && file.type.startsWith('image/')) {
                     form.setFieldValue('cover_image_rect', file);
                   } else {
+                    form.setFieldValue('cover_image_rect', null);
                     form.setFieldError('cover_image_rect', 'Select a valid image');
                   }
                 }}
                 allowMultiple={false}
                 maxFiles={1}
-                required
                 acceptedFileTypes={['image/*']}
                 name="cover_image_rect"
                 labelIdle="Game Cover Image"
@@ -260,21 +280,20 @@ export default function CreateNewGame() {
                 label="Game Screenshots"
                 files={form.data.app_screenshots ? form.data.app_screenshots : []}
                 onaddfilestart={({ file }) => {
-                  if (file && file.type && file.type.startsWith('image/')) {
-                    /* empty */
-                  } else {
-                    throw new Error('Select a valid image');
+                  if (file) {
+                    if (file.type && file.type.startsWith('image/')) {
+                      /* empty */
+                    } else {
+                      throw new Error('Select a valid image');
+                    }
                   }
                 }}
-                onupdatefiles={(files) => {
-                  const file = files?.[0]?.file;
-                  const prevScreenShoots = form.data.app_screenshots ?? [];
-                  
-                  if (file && file.type && file.type.startsWith('image/')) {
-                    form.setFieldValue('app_screenshots', [...prevScreenShoots, file]);
-                  } else {
-                    form.setFieldError('app_screenshots', 'Select a valid image');
-                  }
+                onupdatefiles={(filepondFiles) => {
+                  const files = filepondFiles
+                    .map(({ file }) => file)
+                    .filter((file) => file.type && file.type.startsWith('image/'));
+                  debugger;
+                  form.setFieldValue('app_screenshots', files);
                 }}
                 allowMultiple
                 maxFiles={8}

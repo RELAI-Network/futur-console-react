@@ -3,18 +3,14 @@
 import axios from 'axios';
 import { Timestamp } from 'firebase/firestore';
 
-import { uploadFile, uploadStringFile } from 'src/services/firebase/firestorage/helpers';
+import { uploadFile } from 'src/services/firebase/firestorage/helpers';
+import { getAll, addDocument } from 'src/services/firebase/firestore/helpers';
+import { appsCollection, categoriesCollection } from 'src/services/firebase/firestore/constants';
+
 import {
-  getAll,
-  addDocument,
-  getDocument,
-  updateDocument,
-} from 'src/services/firebase/firestore/helpers';
-import {
-  appsCollection,
-  tagsCollection,
-  categoriesCollection,
-} from 'src/services/firebase/firestore/constants';
+  getApplicationReleases,
+  getDeveloperApplication,
+} from 'src/sections/apps/services/firestore';
 
 export async function getGamesCategories() {
   try {
@@ -32,7 +28,9 @@ export async function getDeveloperGames({ developerId }) {
   try {
     const apps = await getAll(appsCollection);
 
-    return apps.filter((app) => app.app_type === 'game' && `${developerId}` === `${app.publisher_id}`);
+    return apps.filter(
+      (app) => app.app_type === 'game' && `${developerId}` === `${app.publisher_id}`
+    );
   } catch (error) {
     console.error(error);
 
@@ -41,38 +39,14 @@ export async function getDeveloperGames({ developerId }) {
 }
 
 export async function getDeveloperGame({ applicationId }) {
-  try {
-    return getDocument(appsCollection, applicationId);
-  } catch (error) {
-    console.error(error);
-
-    throw error;
-  }
+  return getDeveloperApplication({ applicationId });
 }
 
-export async function getApplicationReleases({ applicationId }) {
-  try {
-    return getAll(`${appsCollection}/${applicationId}/releases`);
-  } catch (error) {
-    console.error(error);
-
-    throw error;
-  }
+export async function getGameReleases({ applicationId }) {
+  return getApplicationReleases({ applicationId });
 }
 
-export async function getTags() {
-  try {
-    const tags = await getAll(tagsCollection);
-
-    return tags;
-  } catch (error) {
-    console.error(error);
-
-    throw error;
-  }
-}
-
-function geneateId() {
+function generateId() {
   return Math.floor(Math.random() * (999999999999999 - 100000000000000 + 1)) + 100000000000000;
 }
 
@@ -121,78 +95,9 @@ export async function scanMobSF({ hash }) {
   return data;
 }
 
-export async function addNewGameRelease({ formData, publisher_id, package_name, application_id }) {
-  
-  try {
-    const mobsfResponse = await uploadToMobSF({
-      package_file: formData.package_file,
-    });
-  
-    await scanMobSF({
-      hash: mobsfResponse.hash,
-    });
-
-    const applicationPackageFileUrl = await uploadFile({
-      filePath: `developers/${publisher_id}/games/${application_id}/releases/${package_name}-${formData.version}.apk`,
-      file: formData.package_file,
-    });
-
-    const applicationLogoUrl = await uploadStringFile({
-      filePath: `developers/${publisher_id}/games/${application_id}/releases/logo-${formData.version}`,
-      file: formData.package_icon,
-      format: 'data_url',
-    });
-
-    const date = new Date();
-
-    const documentData = {
-      downloads_count: 0,
-
-      application_id,
-
-      logo: applicationLogoUrl ?? '',
-
-      // file_download_url: applicationPackageFileUrl,
-      is_beta: false,
-      releases_notes: formData.releases_notes,
-      version: formData.version,
-      size: formData.size,
-
-      added_at: Timestamp.fromDate(date),
-      created_at: Timestamp.fromDate(date),
-
-      scan_type: mobsfResponse.scan_type,
-      scan_hash: mobsfResponse.hash,
-      // scan_status: mobsfResponse.status,
-      scan_status: 'waiting',
-      scan_file_name: mobsfResponse.file_name,
-    };
-
-    const document = await addDocument(
-      `${appsCollection}/${application_id}/releases`,
-      documentData
-    );
-
-    await updateDocument(appsCollection, application_id, {
-      app_download_size: formData.size,
-      release_file_main_url: applicationPackageFileUrl,
-      release_main_url: applicationPackageFileUrl,
-      version: formData.version,
-
-      updated_at: Timestamp.fromDate(date),
-    });
-
-    return document;
-  } catch (error) {
-    console.error(error);
-
-    throw error;
-  }
-}
-
 export async function addNewGame({ formData, user, categories }) {
   try {
-    const id = geneateId();
+    const id = generateId();
 
     const logo_image_square_url = await uploadFile({
       filePath: `developers/${user.web3_account_id}/games/${id}/images/${formData.logo_image_square.name}`,
@@ -200,11 +105,13 @@ export async function addNewGame({ formData, user, categories }) {
       metadata: { user_id: user.id },
     });
 
-    const cover_image_rect_url = await uploadFile({
-      filePath: `developers/${user.web3_account_id}/games/${id}/images/${formData.cover_image_rect.name}`,
-      file: formData.cover_image_rect,
-      metadata: { user_id: user.id },
-    });
+    const cover_image_rect_url = formData.cover_image_rect
+      ? await uploadFile({
+          filePath: `developers/${user.web3_account_id}/games/${id}/images/${formData.cover_image_rect.name}`,
+          file: formData.cover_image_rect,
+          metadata: { user_id: user.id },
+        })
+      : null;
 
     let screenshots = [];
 
@@ -221,8 +128,6 @@ export async function addNewGame({ formData, user, categories }) {
         })
       );
     }
-
-    
 
     const documentData = {
       ...formData,

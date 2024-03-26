@@ -53,7 +53,7 @@ export default function AppsView() {
         </Stack>
         <Box>
           <Button
-            href="apps/create"
+            onClick={() => router.push('/apps/create')}
             variant="contained"
             color="inherit"
             startIcon={<Iconify icon="eva:plus-fill" />}

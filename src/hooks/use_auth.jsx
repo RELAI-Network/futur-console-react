@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }) => {
     () => ({
       status,
       user:
-        user === null
+        !user || !firestoreUser
           ? null
           : {
               ...(user ?? {}),
@@ -76,8 +76,6 @@ export const AuthProvider = ({ children }) => {
     }),
     [status, user, firestoreUser, login, logout]
   );
-
-  console.log(value);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -55,7 +55,6 @@ export async function registerPublisher({ onError, onSuccess, formData, onLogOut
       ...formData,
       created_at: new Date().toISOString(),
       password: null,
-      role: 'publisher',
     };
 
     const docId = await addDocument(usersCollection, user, credential.user.uid);

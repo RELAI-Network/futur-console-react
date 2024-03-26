@@ -53,7 +53,7 @@ export default function BooksView() {
         </Stack>
         <Box>
           <Button
-            href="apps/create"
+            onClick={() => router.push('/books/create')}
             variant="contained"
             color="inherit"
             startIcon={<Iconify icon="eva:plus-fill" />}
@@ -89,30 +89,50 @@ export default function BooksView() {
           title="Applications"
           fields={[
             {
-              attribute: 'name',
+              attribute: 'cover_url',
+              builder: (coverImageUrl) => (
+                <img src={coverImageUrl} alt="Cover" width={54} height={54} />
+              ),
             },
             {
-              attribute: 'category_name',
+              attribute: 'title',
+            },
+            {
+              attribute: 'category_id',
             },
             {
               attribute: 'created_at',
               builder: (createdAt) => (
                 <TableCell align="left">
-                  {new Date(createdAt.seconds * 1000).toLocaleDateString()}
+                  {createdAt?.seconds
+                    ? new Date(createdAt.seconds * 1000).toLocaleDateString()
+                    : null}
                 </TableCell>
               ),
             },
             {
-              attribute: 'downloads_count',
+              attribute: 'genre',
+            },
+            {
+              attribute: 'published',
+              builder: (published, release) => (
+                <TableCell sx={{ color: published ? 'green' : 'orange' }} align="left">
+                  {published ? 'Published' : release.status ?? 'Unpublished'}
+                </TableCell>
+              ),
             },
           ]}
           headers={[
             {
-              attribute: 'name',
-              label: 'Name',
+              attribute: 'cover_url',
+              label: 'Cover',
             },
             {
-              attribute: 'category_name',
+              attribute: 'title',
+              label: 'Title',
+            },
+            {
+              attribute: 'category_id',
               label: 'Category',
             },
             {
@@ -120,8 +140,12 @@ export default function BooksView() {
               label: 'Added at',
             },
             {
-              attribute: 'downloads_count',
-              label: 'Installations',
+              attribute: 'genre',
+              label: 'Genre',
+            },
+            {
+              attribute: 'published',
+              label: 'Status',
             },
           ]}
           identifier="id"

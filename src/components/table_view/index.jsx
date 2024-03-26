@@ -152,7 +152,7 @@ export default function Tableview({
                       identifier={identifier}
                       selected={selected.indexOf(row[identifier]) !== -1}
                       handleClick={(event) => handleClick(event, row[identifier])}
-                      onClick={onClickRow ? () => onClickRow(row[identifier]) : null}
+                      onClick={onClickRow ? () => onClickRow(row[identifier], row) : null}
                     />
                   ))}
 

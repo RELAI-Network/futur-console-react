@@ -3,27 +3,30 @@
 /* eslint-disable no-unreachable */
 // eslint-disable-next-line import/no-extraneous-dependencies
 import axios from 'axios';
+import { toInteger } from 'lodash';
 import { Timestamp } from 'firebase/firestore';
 
 import { uploadFile, uploadStringFile } from 'src/services/firebase/firestorage/helpers';
-// eslint-disable-next-line import/named
-import {
-  getAll,
-  addDocument,
-  getDocument,
-  updateDocument,
-} from 'src/services/firebase/firestore/helpers';
 import {
   appsCollection,
   tagsCollection,
   categoriesCollection,
 } from 'src/services/firebase/firestore/constants';
+// eslint-disable-next-line import/named
+import {
+  getAll,
+  addDocument,
+  getDocument,
+  getAllWhere,
+  updateDocument,
+} from 'src/services/firebase/firestore/helpers';
+
+import { minScanScore } from '../constants';
+import { submitAsset } from './polkadot-tx';
 
 export async function getAppsCategories() {
   try {
-    const categories = await getAll(categoriesCollection);
-
-    return categories.filter((category) => (category.item_types ?? []).includes('app'));
+    return getAllWhere(categoriesCollection, 'item_types', 'array-contains', 'app');
   } catch (error) {
     console.error(error);
 
@@ -35,9 +38,14 @@ export async function getDeveloperApplications({ developerId }) {
   try {
     const apps = await getAll(appsCollection);
 
-    return apps.filter(
-      (app) => app.app_type === 'app' && `${developerId}` === `${app.publisher_id}`
-    );
+    return apps
+      .filter((app) => app.app_type === 'app' && `${developerId}` === `${app.publisher_id}`)
+      .map((app) => ({
+        id: app.id,
+        ...app,
+        app_version: toInteger(`${app.version}`.replaceAll('.', '')),
+      }))
+      .sort((a, b) => b.app_version - a.app_version);
   } catch (error) {
     console.error(error);
 
@@ -59,7 +67,15 @@ export async function getApplicationReleases({ applicationId }) {
   try {
     const releases = await getAll(`${appsCollection}/${applicationId}/releases`);
 
-    return releases.sort((a, b) => b.created_at - a.created_at);
+    return releases
+      .sort((a, b) => b.created_at - a.created_at)
+      .map((release) => ({
+        id: release.id,
+        ...release,
+        release_version: toInteger(`${release.version}`.replaceAll('.', '')),
+        release_version_code: toInteger(`${release.version_code}`),
+      }))
+      .sort((a, b) => b.release_version - a.release_version);
   } catch (error) {
     console.error(error);
 
@@ -89,14 +105,14 @@ export async function getTags() {
   }
 }
 
-function geneateId() {
+function generateId() {
   return Math.floor(Math.random() * (999999999999999 - 100000000000000 + 1)) + 100000000000000;
 }
 /**
  * Uploads a file to MobSF server.
  *
  * @param {Object} package_file - The file to be uploaded
- * @return {{scan_type: String, hash: String, file_name: String, status: String}} The response data from the server
+ * @return {Promise<{scan_type: String, hash: String, file_name: String, status: String}>} The response data from the server
  */
 export async function uploadToMobSF({ package_file }) {
   const formData = new FormData();
@@ -130,7 +146,7 @@ export async function uploadToMobSF({ package_file }) {
   return data;
 }
 
-export async function scanMobSF({ hash }) {
+export async function scanMobSF(hash) {
   const formData = new FormData();
 
   formData.append('hash', hash);
@@ -140,7 +156,7 @@ export async function scanMobSF({ hash }) {
   const config = {
     headers: {
       'X-Mobsf-Api-Key': import.meta.env.VITE_APP_MOBSF_KEY,
-      Authorization: import.meta.env.VITE_APP_MOBSF_KEY,
+      // Authorization: import.meta.env.VITE_APP_MOBSF_KEY,
       // 'Content-Type': null,
     },
   };
@@ -159,19 +175,29 @@ export async function addNewApplicationRelease({
   package_name,
   application_id,
   app_type = 'app',
+  onUploadProgress,
 }) {
-  const mobsfResponse = await uploadToMobSF({
-    package_file: formData.package_file,
-  });
-
-  await scanMobSF({
-    hash: mobsfResponse.hash,
-  });
-
   try {
+    await throwErrorWhenApplicationVersionExists({
+      application_id,
+      version_code: formData.version_code,
+      version: formData.version,
+    });
+
+    const mobsfResponse = await uploadToMobSF({
+      package_file: formData.package_file,
+    });
+
+    // const { appsec } = await scanMobSF(mobsfResponse.hash);
+
+    // if ((appsec?.security_score ?? 0) < minScanScore) {
+    //   throw new Error(`Security score of ${app_type} is too low : ${appsec?.security_score}`);
+    // }
+
     const applicationPackageFileUrl = await uploadFile({
       filePath: `developers/${publisher_id}/${app_type}s/${application_id}/releases/${package_name}-${formData.version}.apk`,
       file: formData.package_file,
+      onProgress: onUploadProgress,
     });
 
     const applicationLogoUrl = await uploadStringFile({
@@ -194,6 +220,7 @@ export async function addNewApplicationRelease({
       is_beta: false,
       releases_notes: formData.releases_notes,
       version: formData.version,
+      version_code: formData.version_code,
       size: formData.size,
 
       added_at: Timestamp.fromDate(date),
@@ -215,6 +242,7 @@ export async function addNewApplicationRelease({
       release_file_main_url: applicationPackageFileUrl,
       release_main_url: applicationPackageFileUrl,
       version: formData.version,
+      version_code: formData.version_code,
 
       updated_at: Timestamp.fromDate(date),
     });
@@ -227,17 +255,89 @@ export async function addNewApplicationRelease({
   }
 }
 
-export async function publishApplicationRelease({ application_id, release_id }) {
+async function throwErrorWhenApplicationVersionExists({
+  application_id,
+  version_code,
+  version,
+  release_id,
+}) {
+  let othersReleases = await getApplicationReleases({ applicationId: application_id });
+
+  if (release_id) {
+    othersReleases = othersReleases.filter((release) => release.id !== release_id);
+  }
+
+  if (othersReleases.length > 0) {
+    const othersReleasesVersionCodes = othersReleases
+      .map((release) => release.release_version_code)
+      .sort((a, b) => b - a);
+
+    if (othersReleasesVersionCodes.includes(version_code)) {
+      throw new Error(`A release with version code ${version_code} already exists.`);
+    }
+
+    if (othersReleasesVersionCodes[0] >= toInteger(`${version_code}`)) {
+      throw new Error(
+        `Your release version code ${version_code} must be greater than ${othersReleasesVersionCodes[0]}.`
+      );
+    }
+
+    const othersReleasesVersion = othersReleases
+      .filter((release) => !!release.published_at)
+      .map((release) => release.release_version)
+      .sort((a, b) => b - a);
+
+    if (othersReleasesVersion.length > 0) {
+      if (othersReleasesVersion[0] >= toInteger(`${version}`.replaceAll('.', ''))) {
+        throw new Error(
+          `App release version (${version}) must be greater than latest version (${othersReleases[0].version}).`
+        );
+      }
+    }
+  }
+}
+
+export async function publishApplicationRelease({ application_id, release_id, user_account }) {
   try {
     const release = await getApplicationRelease({
       applicationId: application_id,
       releaseId: release_id,
     });
 
-    if (release?.scan_hash) {
-      const { appsec, ...props } = await scanMobSF({ hash: release?.scan_hash });
+    await throwErrorWhenApplicationVersionExists({
+      application_id,
+      version_code: release.version_code,
+      version: release.version,
+      release_id: release.id,
+    });
 
-      if ((appsec?.security_score ?? 0) > 50) {
+    if (release?.scan_hash) {
+      const { appsec, ...props } = await scanMobSF(release?.scan_hash);
+
+      if ((appsec?.security_score ?? 0) > minScanScore) {
+        const application = await getDeveloperApplication({
+          applicationId: application_id,
+        });
+
+        await submitAsset({
+          assetType: application.app_type,
+          user_web3_account_address: user_account,
+          file_name: appsec.file_name,
+          publishThisAsset: true,
+          onError: (e) => {
+            console.error(e);
+          },
+          onStartup: (e) => {
+            console.log(e);
+          },
+          onProcessing: (e) => {
+            console.log(e);
+          },
+          onSuccess: (e) => {
+            console.log(e);
+          },
+        });
+
         await updateDocument(`${appsCollection}/${application_id}/releases`, release_id, {
           scan_virus_total: props.virus_total,
           scan_version_name: props.version_name,
@@ -316,7 +416,6 @@ export async function unPublishApplicationRelease({ application_id, release_id }
     }
 
     throw new Error('Application release is not published.');
-
   } catch (error) {
     console.error(error);
 
@@ -326,7 +425,7 @@ export async function unPublishApplicationRelease({ application_id, release_id }
 
 export async function addNewApplication({ formData, user, categories }) {
   try {
-    const id = geneateId();
+    const id = generateId();
 
     const logo_image_square_url = await uploadFile({
       filePath: `developers/${user.web3_account_id}/apps/${id}/images/${formData.logo_image_square.name}`,
@@ -334,11 +433,13 @@ export async function addNewApplication({ formData, user, categories }) {
       metadata: { user_id: user.id },
     });
 
-    const cover_image_rect_url = await uploadFile({
-      filePath: `developers/${user.web3_account_id}/apps/${id}/images/${formData.cover_image_rect.name}`,
-      file: formData.cover_image_rect,
-      metadata: { user_id: user.id },
-    });
+    const cover_image_rect_url = formData.cover_image_rect
+      ? await uploadFile({
+          filePath: `developers/${user.web3_account_id}/apps/${id}/images/${formData.cover_image_rect.name}`,
+          file: formData.cover_image_rect,
+          metadata: { user_id: user.id },
+        })
+      : null;
 
     // eslint-disable-next-line prefer-const
     let screenshots = [];

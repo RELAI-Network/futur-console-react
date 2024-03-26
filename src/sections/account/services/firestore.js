@@ -18,6 +18,7 @@ export async function updateUserAccountAfterRegistration({
     await updateDocument(usersCollection, userID, {
       paid_developer_fee: true,
       publisher_id: publisherId,
+      publisher_name: accountName,
       web3_account_id: publisherId,
       web3_account_address: accountAddress,
       web3_account_name: accountName,
