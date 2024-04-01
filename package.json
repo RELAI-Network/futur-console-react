@@ -29,6 +29,8 @@
     "@polkadot/api": "^10.12.2",
     "@polkadot/extension-dapp": "^0.46.8",
     "@polkadot/extension-inject": "^0.46.8",
+    "@polkadot/react-identicon": "^3.6.5",
+    "@polkadot/util": "^12.6.2",
     "@polkadot/util-crypto": "^12.6.2",
     "@polkadot/wasm-crypto": "^7.3.2",
     "apexcharts": "^3.43.0",

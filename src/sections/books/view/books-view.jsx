@@ -30,7 +30,7 @@ export default function BooksView() {
 
   const { user } = useAuth();
 
-  const { data: applications, loading: isLoading } = usePromise(() =>
+  const { data: books, loading: isLoading } = usePromise(() =>
     getPublisherBooks({ developerId: user?.publisher_id })
   );
 
@@ -86,7 +86,7 @@ export default function BooksView() {
       ) : (
         <Tableview
           addNewBtnLabel="Add"
-          title="Applications"
+          title="Books"
           fields={[
             {
               attribute: 'cover_url',
@@ -149,11 +149,11 @@ export default function BooksView() {
             },
           ]}
           identifier="id"
-          items={applications}
+          items={books || []}
           showHeader={false}
           showSearchAndFilter={false}
           onClickRow={(id) => {
-            router.push(`/apps/view/${id}`);
+            router.push(`/books/view/${id}`);
           }}
         />
       )}

@@ -1,6 +1,9 @@
 /* eslint-disable no-debugger */
+import { useMemo } from 'react';
+import { toInteger } from 'lodash';
+import PropTypes from 'prop-types';
 import 'filepond/dist/filepond.min.css';
-import { FilePond, registerPlugin } from 'react-filepond';
+import { registerPlugin } from 'react-filepond';
 import FilePondPluginImagePreview from 'filepond-plugin-image-preview';
 import 'filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css';
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -9,6 +12,7 @@ import FilePondPluginImageExifOrientation from 'filepond-plugin-image-exif-orien
 
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
+import Stack from '@mui/material/Stack';
 import Divider from '@mui/material/Divider';
 import TextField from '@mui/material/TextField';
 import Container from '@mui/material/Container';
@@ -23,11 +27,18 @@ import usePromise from 'src/hooks/use_promise';
 import { validateSchemas } from 'src/utils/forms/validator';
 import { useFormValidation } from 'src/utils/forms/hooks/useFormValidation';
 
+import Iconify from 'src/components/iconify';
 import FormSelect from 'src/components/form/select';
 import RadioInput from 'src/components/form/radio_input';
 import CircularLoader from 'src/components/loader/CircularLoader';
+import FilePondFirebaseInputField from 'src/components/form/filepond_firebase';
 
-import { getTags, addNewApplication, getAppsCategories } from '../services/firestore';
+import {
+  getTags,
+  editApplication,
+  addNewApplication,
+  getAppsCategories,
+} from '../services/firestore';
 
 // Register the plugins
 registerPlugin(
@@ -38,11 +49,18 @@ registerPlugin(
 
 // ----------------------------------------------------------------------
 
-export default function CreateNewApp() {
+export default function CreateNewApp({ formData = {} }) {
   const form = useFormValidation({
-    contains_ads: false,
-    has_in_app_purchases: false,
+    initialData: {
+      contains_ads: false,
+      has_in_app_purchases: false,
+      is_free: true,
+      min_age_requirement: 12,
+      ...(formData === null ? {} : formData),
+    },
   });
+
+  const editing = useMemo(() => !!formData, [formData]);
 
   const { user } = useAuth();
 
@@ -50,6 +68,8 @@ export default function CreateNewApp() {
 
   const { data: categories, loading: loadingCategories } = usePromise(getAppsCategories);
   const { data: tags, loading: loadingTags } = usePromise(getTags);
+
+  console.debug(form.data);
 
   const createAppFunc = async () => {
     if (
@@ -63,11 +83,10 @@ export default function CreateNewApp() {
           description: 'Enter app description.',
 
           // 2 - Presentation
-          logo_image_square: 'Select your application main logo.',
-          // cover_image_rect: 'Select your application cover image.',
-          app_screenshots: ({ value }) => {
+          logo_image_square_url: 'Select your application main logo.',
+          // cover_image_rect_url: 'Select your application cover image.',
+          screenshots: ({ value }) => {
             if (!value || (value ?? []).length < 2) {
-
               return 'Add at least two screenshot.';
             }
 
@@ -78,7 +97,6 @@ export default function CreateNewApp() {
           tags: 'Add application tags.',
           package_name: ({ value }) => {
             if (!value) {
-
               return 'Add application Package Name';
             }
 
@@ -90,6 +108,19 @@ export default function CreateNewApp() {
           },
 
           min_age_requirement: 'Indicate min age requirement.',
+
+          is_free: 'Indicates if the book is free.',
+          price: ({ value, values }) => {
+            if (values.is_free) {
+              return undefined;
+            }
+
+            if (!value) {
+              return 'Enter book price.';
+            }
+
+            return toInteger(`${value}`) > 0 ? undefined : 'Enter valid price.';
+          },
         },
         setFieldError: (field, message) => {
           form.setFieldError(field, message);
@@ -102,16 +133,42 @@ export default function CreateNewApp() {
     ) {
       form.setSubmitting(true);
 
-      addNewApplication({ formData: form.data, categories, user })
-        .then((applicationId) => {
-          router.push(`/apps/view/${applicationId}`);
-        })
-        .catch((e) => {
-          form.setSubmitError(e?.message ?? 'An error occured.');
-        })
-        .finally(() => {
-          form.setSubmitting(false);
-        });
+      try {
+        if (editing) {
+          await editApplication({
+            formData: form.data,
+            applicationId: formData.id,
+            categories,
+            user,
+            onSuccess: ({ id }) => {
+              router.push(`/apps/view/${id}`);
+            },
+            onError: (e) => {
+              form.setSubmitting(false);
+
+              form.setSubmitError(e?.message ?? 'An error occured while editing the application.');
+            },
+          });
+        } else {
+          await addNewApplication({
+            formData: form.data,
+            categories,
+            user,
+            onSuccess: ({ id }) => {
+              router.push(`/apps/view/${id}`);
+            },
+            onError: (e) => {
+              form.setSubmitting(false);
+
+              form.setSubmitError(e?.message ?? 'An error occured while creating the application.');
+            },
+          });
+        }
+      } catch (error) {
+        form.setSubmitting(false);
+
+        form.setSubmitError(error?.message ?? 'An error occured.');
+      }
     } else {
       form.setSubmitError('Enter valid informations.');
     }
@@ -119,7 +176,20 @@ export default function CreateNewApp() {
 
   return (
     <Container maxWidth="xl">
-      <Typography variant="h4">Create new application</Typography>
+      <Stack mb={1} direction="row" alignItems="center" justifyContent="start">
+        <Iconify
+          color="primary"
+          sx={{ mr: 1 }}
+          icon="material-symbols:arrow-back-ios"
+          width={24}
+          height={24}
+          onClick={() => router.push('/apps')}
+          cursor="pointer"
+        />
+        <Typography variant="h4">
+          {editing ? 'Edit application' : 'Create new application'}
+        </Typography>
+      </Stack>
       <Divider color="primary" />
       <br />
       {loadingCategories || loadingTags ? (
@@ -140,6 +210,8 @@ export default function CreateNewApp() {
                 helperText={form.validationErrors.name}
                 error={!!form.validationErrors.name}
                 onChange={(e) => form.setFieldValue('name', e.target.value)}
+                value={form.data.name}
+                focused
                 size="small"
                 fullWidth
               />
@@ -168,6 +240,8 @@ export default function CreateNewApp() {
                 helperText={form.validationErrors.email}
                 error={!!form.validationErrors.email}
                 onChange={(e) => form.setFieldValue('email', e.target.value)}
+                value={form.data.email}
+                focused
                 size="small"
                 fullWidth
               />
@@ -180,6 +254,8 @@ export default function CreateNewApp() {
                 helperText={form.validationErrors.website}
                 error={!!form.validationErrors.website}
                 onChange={(e) => form.setFieldValue('website', e.target.value)}
+                value={form.data.website}
+                focused
                 size="small"
                 fullWidth
               />
@@ -192,6 +268,8 @@ export default function CreateNewApp() {
                 helperText={form.validationErrors.description}
                 error={!!form.validationErrors.description}
                 onChange={(e) => form.setFieldValue('description', e.target.value)}
+                value={form.data.description}
+                focused
                 size="medium"
                 fullWidth
                 multiline
@@ -208,101 +286,53 @@ export default function CreateNewApp() {
               <Typography variant="h6">2. Presentation</Typography>
             </Grid>
             <Grid item xs={12} md={6}>
-              <FilePond
-                label="App Logo Image (512x512)"
-                files={form.data.logo_image_square ? [form.data.logo_image_square] : []}
-                onaddfilestart={({ file }) => {
-                  if (file && file.type && file.type.startsWith('image/')) {
-                    /* empty */
-                  } else {
-                    throw new Error('Select a valid image');
-                  }
-                }}
-                onupdatefiles={(files) => {
-                  const file = files?.[0]?.file;
-
-                  if (file && file.type && file.type.startsWith('image/')) {
-                    form.setFieldValue('logo_image_square', file);
-                  } else {
-                    form.setFieldValue('logo_image_square', null);
-                    form.setFieldError('logo_image_square', 'Select a valid image');
-                  }
-                }}
-                allowMultiple={false}
-                maxFiles={1}
+              <FilePondFirebaseInputField
+                label="App Logo Image * (512x512)"
+                hint="App Logo Image *"
+                name="logo_image_square_url"
+                value={form.data.logo_image_square_url}
+                setValue={(value) => form.setFieldValue('logo_image_square_url', value)}
+                acceptedFileTypes={['image/*']}
                 required
-                acceptedFileTypes={['image/*']}
-                name="logo_image_square"
-                labelIdle="App Logo Image *"
-                helperText="(512x512)"
+                uploadBasePath={`developers/${user.web3_account_id}/apps/logo`}
               />
-              <Typography color="error">{form.validationErrors.logo_image_square}</Typography>
+              <Typography color="error">{form.validationErrors.logo_image_square_url}</Typography>
             </Grid>
-
             <Grid item xs={12} md={6}>
-              <FilePond
-                label="App Cover Image (1000x512)"
-                files={form.data.cover_image_rect ? [form.data.cover_image_rect] : []}
-                onaddfilestart={({ file }) => {
-                  if (file && file.type && file.type.startsWith('image/')) {
-                    /* empty */
-                  } else {
-                    throw new Error('Select a valid image');
-                  }
-                }}
-                onupdatefiles={(files) => {
-                  const file = files?.[0]?.file;
-
-                  if (file) {
-                    if (file.type && file.type.startsWith('image/')) {
-                      form.setFieldValue('logo_image_square', file);
-                    } else {
-                      form.setFieldValue('logo_image_square', null);
-                      form.setFieldError('logo_image_square', 'Select a valid image');
-                    }
-                  } else {
-                    form.setFieldValue('logo_image_square', null);
-                    form.setFieldError('logo_image_square', '');
-                  }
-                }}
-                allowMultiple={false}
-                maxFiles={1}
+              <FilePondFirebaseInputField
+                label="App Cover Image * (1000x512)"
+                hint="App Cover Image"
+                name="cover_image_rect_url"
+                value={form.data.cover_image_rect_url}
+                setValue={(value) => form.setFieldValue('cover_image_rect_url', value)}
                 acceptedFileTypes={['image/*']}
-                name="cover_image_rect"
-                labelIdle="App Cover Image"
-                helperText="Image should be (1000x512)"
+                required
+                uploadBasePath={`developers/${user.web3_account_id}/apps/covers`}
               />
-              <Typography color="error">{form.validationErrors.cover_image_rect}</Typography>
+              <Typography color="error">{form.validationErrors.cover_image_rect_url}</Typography>
             </Grid>
             <Grid item xs={12}>
-              <FilePond
+              <FilePondFirebaseInputField
+                name="screenshots"
+                acceptedFileTypes={['image/*']}
+                hint="App Screenshots"
                 label="App Screenshots"
-                files={form.data.app_screenshots ? form.data.app_screenshots : []}
-                onaddfilestart={({ file }) => {
-                  if (file) {
-                    if (file.type && file.type.startsWith('image/')) {
-                      /* empty */
-                    } else {
-                      throw new Error('Select a valid image');
-                    }
+                maxFiles={8}
+                multiple
+                required
+                setValue={(value) => form.setFieldValue('screenshots', value)}
+                value={form.data.screenshots}
+                validateFile={(file) => {
+                  if (file.type && file.type.startsWith('image/')) {
+                    /* empty */
+                  } else {
+                    throw new Error('Select a valid image');
                   }
                 }}
-                onupdatefiles={(filepondFiles) => {
-                  const files = filepondFiles
-                    .map(({ file }) => file)
-                    .filter((file) => file.type && file.type.startsWith('image/'));
-                  debugger;
-                  form.setFieldValue('app_screenshots', files);
-                }}
-                allowMultiple
-                maxFiles={8}
-                required
-                acceptedFileTypes={['image/*']}
-                name="app_screenshots"
-                labelIdle="App Screenshots"
+                uploadBasePath={`developers/${user.web3_account_id}/apps/screenshots`}
                 helperText="At least two screenshots"
               />
-              <Typography color="error">{form.validationErrors.app_screenshots}</Typography>
+              <Typography color="error">{form.validationErrors.screenshots}</Typography>
             </Grid>
             <Grid item xs={12} md={6}>
               <TextField
@@ -311,6 +341,8 @@ export default function CreateNewApp() {
                 helperText={form.validationErrors.video_trailer_url}
                 error={!!form.validationErrors.video_trailer_url}
                 onChange={(e) => form.setFieldValue('video_trailer_url', e.target.value)}
+                value={form.data.video_trailer_url}
+                focused
                 size="small"
                 fullWidth
               />
@@ -328,7 +360,7 @@ export default function CreateNewApp() {
               <FormSelect
                 onChange={(value) => {
                   const prevTags = form.data.tags ?? [];
-                  debugger;
+
                   form.setFieldValue('tags', [...prevTags, ...value]);
                 }}
                 multiple
@@ -376,6 +408,8 @@ export default function CreateNewApp() {
                 helperText={form.validationErrors.min_age_requirement}
                 error={!!form.validationErrors.min_age_requirement}
                 onChange={(e) => form.setFieldValue('min_age_requirement', e.target.value)}
+                value={form.data.min_age_requirement}
+                focused
                 size="small"
                 fullWidth
               />
@@ -403,7 +437,46 @@ export default function CreateNewApp() {
                 name="has_in_app_purchases"
               />
             </Grid>
-
+            <Grid item xs={12} md={6}>
+              <RadioInput
+                row
+                sx={{ marginY: 1, flexDirection: 'row' }}
+                labelSx={{ marginY: 'auto', marginRight: 'auto' }}
+                error={form.validationErrors.is_free}
+                helperText={form.validationErrors.is_free}
+                label="Is free"
+                variant="outlined"
+                items={[
+                  { label: 'YES', value: true },
+                  { label: 'NO', value: false },
+                ]}
+                onChange={(value) => {
+                  form.setFieldValue('is_free', value);
+                }}
+                id="is_free"
+                value={form.data.is_free}
+                itemValueBuilder={(item) => item.value}
+                itemLabelBuilder={(item) => item.label}
+                name="is_free"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              {`${form.data.is_free ?? true}` === 'true' ? null : (
+                <TextField
+                  name="price"
+                  label="Price in $RL"
+                  type="number"
+                  required
+                  helperText={form.validationErrors.price}
+                  error={!!form.validationErrors.price}
+                  onChange={(e) => form.setFieldValue('price', e.target.value)}
+                  value={form.data.price}
+                  focused
+                  size="small"
+                  fullWidth
+                />
+              )}
+            </Grid>
             <Grid item xs={12} md={6}>
               <TextField
                 name="package_name"
@@ -411,6 +484,8 @@ export default function CreateNewApp() {
                 helperText={form.validationErrors.package_name}
                 error={!!form.validationErrors.package_name}
                 onChange={(e) => form.setFieldValue('package_name', e.target.value)}
+                value={form.data.package_name}
+                focused
                 size="small"
                 fullWidth
               />
@@ -423,6 +498,8 @@ export default function CreateNewApp() {
                 helperText={form.validationErrors.privacy_policy_link}
                 error={!!form.validationErrors.privacy_policy_link}
                 onChange={(e) => form.setFieldValue('privacy_policy_link', e.target.value)}
+                value={form.data.privacy_policy_link}
+                focused
                 size="small"
                 fullWidth
               />
@@ -442,8 +519,12 @@ export default function CreateNewApp() {
         loading={form.submitting}
         onClick={createAppFunc}
       >
-        Create new application
+        {editing ? 'Update application' : 'Create new application'}
       </LoadingButton>
     </Container>
   );
 }
+
+CreateNewApp.propTypes = {
+  formData: PropTypes.object,
+};

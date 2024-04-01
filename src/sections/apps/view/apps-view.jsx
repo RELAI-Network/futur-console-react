@@ -131,6 +131,9 @@ export default function AppsView() {
           onClickRow={(id) => {
             router.push(`/apps/view/${id}`);
           }}
+          onEditRow={(id) => {
+            router.push(`/apps/edit/${id}`);
+          }}
         />
       )}
     </Container>

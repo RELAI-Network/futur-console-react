@@ -1,6 +1,7 @@
 /* eslint-disable no-debugger */
+import { toInteger } from 'lodash';
 import 'filepond/dist/filepond.min.css';
-import { FilePond, registerPlugin } from 'react-filepond';
+import { registerPlugin } from 'react-filepond';
 import FilePondPluginImagePreview from 'filepond-plugin-image-preview';
 import 'filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css';
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -26,6 +27,7 @@ import { useFormValidation } from 'src/utils/forms/hooks/useFormValidation';
 import FormSelect from 'src/components/form/select';
 import RadioInput from 'src/components/form/radio_input';
 import CircularLoader from 'src/components/loader/CircularLoader';
+import FilePondFirebaseInputField from 'src/components/form/filepond_firebase';
 
 import { getTags } from 'src/sections/apps/services/firestore';
 
@@ -42,8 +44,12 @@ registerPlugin(
 
 export default function CreateNewGame() {
   const form = useFormValidation({
-    contains_ads: false,
-    has_in_app_purchases: false,
+    initialData: {
+      contains_ads: false,
+      has_in_app_purchases: false,
+      is_free: true,
+      min_age_requirement: 12,
+    },
   });
 
   const { user } = useAuth();
@@ -91,6 +97,19 @@ export default function CreateNewGame() {
           },
 
           min_age_requirement: 'Indicate min age requirement.',
+
+          is_free: 'Indicates if the book is free.',
+          price: ({ value, values }) => {
+            if (values.is_free) {
+              return undefined;
+            }
+
+            if (!value) {
+              return 'Enter book price.';
+            }
+
+            return toInteger(`${value}`) > 0 ? undefined : 'Enter valid price.';
+          },
         },
         setFieldError: (field, message) => {
           form.setFieldError(field, message);
@@ -103,16 +122,25 @@ export default function CreateNewGame() {
     ) {
       form.setSubmitting(true);
 
-      addNewGame({ formData: form.data, categories, user })
-        .then((gameId) => {
-          router.push(`/games/view/${gameId}`);
-        })
-        .catch((e) => {
-          form.setSubmitError(e?.message ?? 'An error occured.');
-        })
-        .finally(() => {
-          form.setSubmitting(false);
+      try {
+        await addNewGame({
+          formData: form.data,
+          categories,
+          user,
+          onSuccess: ({ id }) => {
+            router.push(`/games/view/${id}`);
+          },
+          onError: (e) => {
+            form.setSubmitting(false);
+
+            form.setSubmitError(e?.message ?? 'An error occured while creating the game.');
+          },
         });
+      } catch (error) {
+        form.setSubmitting(false);
+
+        form.setSubmitError(error?.message ?? 'An error occured.');
+      }
     } else {
       form.setSubmitError('Enter valid informations.');
     }
@@ -209,98 +237,51 @@ export default function CreateNewGame() {
               <Typography variant="h6">2. Presentation</Typography>
             </Grid>
             <Grid item xs={12} md={6}>
-              <FilePond
-                label="Game Logo Image (512x512)"
-                files={form.data.logo_image_square ? [form.data.logo_image_square] : []}
-                onaddfilestart={({ file }) => {
-                  if (file && file.type && file.type.startsWith('image/')) {
-                    /* empty */
-                  } else {
-                    throw new Error('Select a valid image');
-                  }
-                }}
-                onupdatefiles={(files) => {
-                  const file = files?.[0]?.file;
-
-                  if (file) {
-                    if (file.type && file.type.startsWith('image/')) {
-                      form.setFieldValue('logo_image_square', file);
-                    } else {
-                      form.setFieldValue('logo_image_square', null);
-                      form.setFieldError('logo_image_square', 'Select a valid image');
-                    }
-                  } else {
-                    form.setFieldValue('logo_image_square', null);
-                    form.setFieldError('logo_image_square', '');
-                  }
-                }}
-                allowMultiple={false}
-                maxFiles={1}
-                required
-                acceptedFileTypes={['image/*']}
+              <FilePondFirebaseInputField
+                label="Game Logo Image * (512x512)"
+                hint="Game Logo Image *"
                 name="logo_image_square"
-                labelIdle="Game Logo Image"
-                helperText="(512x512)"
+                value={form.data.logo_image_square}
+                setValue={(value) => form.setFieldValue('logo_image_square', value)}
+                acceptedFileTypes={['image/*']}
+                required
+                uploadBasePath={`developers/${user.web3_account_id}/games/logo`}
               />
               <Typography color="error">{form.validationErrors.logo_image_square}</Typography>
             </Grid>
 
             <Grid item xs={12} md={6}>
-              <FilePond
-                label="Game Cover Image (1000x512)"
-                files={form.data.cover_image_rect ? [form.data.cover_image_rect] : []}
-                onaddfilestart={({ file }) => {
-                  if (file && file.type && file.type.startsWith('image/')) {
+              <FilePondFirebaseInputField
+                label="Game Cover Image * (1000x512)"
+                hint="Game Cover Image"
+                name="cover_image_rect"
+                value={form.data.cover_image_rect}
+                setValue={(value) => form.setFieldValue('cover_image_rect', value)}
+                acceptedFileTypes={['image/*']}
+                required
+                uploadBasePath={`developers/${user.web3_account_id}/games/covers`}
+              />
+              <Typography color="error">{form.validationErrors.cover_image_rect}</Typography>
+            </Grid>
+            <Grid item xs={12}>
+              <FilePondFirebaseInputField
+                name="app_screenshots"
+                acceptedFileTypes={['image/*']}
+                hint="Game Screenshots"
+                label="Game Screenshots"
+                maxFiles={8}
+                multiple
+                required
+                setValue={(value) => form.setFieldValue('app_screenshots', value)}
+                value={form.data.app_screenshots}
+                validateFile={(file) => {
+                  if (file.type && file.type.startsWith('image/')) {
                     /* empty */
                   } else {
                     throw new Error('Select a valid image');
                   }
                 }}
-                onupdatefiles={(files) => {
-                  const file = files?.[0]?.file;
-
-                  if (file && file.type && file.type.startsWith('image/')) {
-                    form.setFieldValue('cover_image_rect', file);
-                  } else {
-                    form.setFieldValue('cover_image_rect', null);
-                    form.setFieldError('cover_image_rect', 'Select a valid image');
-                  }
-                }}
-                allowMultiple={false}
-                maxFiles={1}
-                acceptedFileTypes={['image/*']}
-                name="cover_image_rect"
-                labelIdle="Game Cover Image"
-                helperText="Image should be (1000x512)"
-              />
-              <Typography color="error">{form.validationErrors.cover_image_rect}</Typography>
-            </Grid>
-            <Grid item xs={12}>
-              <FilePond
-                label="Game Screenshots"
-                files={form.data.app_screenshots ? form.data.app_screenshots : []}
-                onaddfilestart={({ file }) => {
-                  if (file) {
-                    if (file.type && file.type.startsWith('image/')) {
-                      /* empty */
-                    } else {
-                      throw new Error('Select a valid image');
-                    }
-                  }
-                }}
-                onupdatefiles={(filepondFiles) => {
-                  const files = filepondFiles
-                    .map(({ file }) => file)
-                    .filter((file) => file.type && file.type.startsWith('image/'));
-                  debugger;
-                  form.setFieldValue('app_screenshots', files);
-                }}
-                allowMultiple
-                maxFiles={8}
-                required
-                acceptedFileTypes={['image/*']}
-                name="app_screenshots"
-                labelIdle="Game Screenshots"
+                uploadBasePath={`developers/${user.web3_account_id}/games/screenshots`}
                 helperText="At least two screenshots"
               />
               <Typography color="error">{form.validationErrors.app_screenshots}</Typography>
@@ -329,7 +310,7 @@ export default function CreateNewGame() {
               <FormSelect
                 onChange={(value) => {
                   const prevTags = form.data.tags ?? [];
-                  debugger;
+
                   form.setFieldValue('tags', [...prevTags, ...value]);
                 }}
                 multiple
@@ -367,7 +348,44 @@ export default function CreateNewGame() {
                 name="contains_ads"
               />
             </Grid>
-
+            <Grid item xs={12} md={6}>
+              <RadioInput
+                row
+                sx={{ marginY: 1, flexDirection: 'row' }}
+                labelSx={{ marginY: 'auto', marginRight: 'auto' }}
+                error={form.validationErrors.is_free}
+                helperText={form.validationErrors.is_free}
+                label="Is free"
+                variant="outlined"
+                items={[
+                  { label: 'YES', value: true },
+                  { label: 'NO', value: false },
+                ]}
+                onChange={(value) => {
+                  form.setFieldValue('is_free', value);
+                }}
+                id="is_free"
+                value={form.data.is_free}
+                itemValueBuilder={(item) => item.value}
+                itemLabelBuilder={(item) => item.label}
+                name="is_free"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              {`${form.data.is_free ?? true}` === 'true' ? null : (
+                <TextField
+                  name="price"
+                  label="Price in $RL"
+                  type="number"
+                  required
+                  helperText={form.validationErrors.price}
+                  error={!!form.validationErrors.price}
+                  onChange={(e) => form.setFieldValue('price', e.target.value)}
+                  size="small"
+                  fullWidth
+                />
+              )}
+            </Grid>
             <Grid item xs={12} md={6}>
               <TextField
                 name="min_age_requirement"

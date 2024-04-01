@@ -3,7 +3,7 @@
 /* eslint-disable no-unreachable */
 // eslint-disable-next-line import/no-extraneous-dependencies
 import axios from 'axios';
-import { toInteger } from 'lodash';
+import { omit, toInteger } from 'lodash';
 import { Timestamp } from 'firebase/firestore';
 
 import { uploadFile, uploadStringFile } from 'src/services/firebase/firestorage/helpers';
@@ -22,7 +22,7 @@ import {
 } from 'src/services/firebase/firestore/helpers';
 
 import { minScanScore } from '../constants';
-import { submitAsset } from './polkadot-tx';
+import { submitAsset, updateAsset, pubUnblishAsset } from './polkadot-tx';
 
 export async function getAppsCategories() {
   try {
@@ -151,7 +151,7 @@ export async function scanMobSF(hash) {
 
   formData.append('hash', hash);
 
-  // formData.append('re_scan', package_file.name);
+  formData.append('re_scan', 0);
 
   const config = {
     headers: {
@@ -297,7 +297,15 @@ async function throwErrorWhenApplicationVersionExists({
   }
 }
 
-export async function publishApplicationRelease({ application_id, release_id, user_account }) {
+export async function publishApplicationRelease({
+  application_id,
+  release_id,
+  user_account,
+  onSuccess,
+  onError,
+  onProcessing,
+  onInit,
+}) {
   try {
     const release = await getApplicationRelease({
       applicationId: application_id,
@@ -319,69 +327,80 @@ export async function publishApplicationRelease({ application_id, release_id, us
           applicationId: application_id,
         });
 
-        await submitAsset({
-          assetType: application.app_type,
-          user_web3_account_address: user_account,
-          file_name: appsec.file_name,
+        await pubUnblishAsset({
+          senderAddress: user_account,
+          assetId: application.asset_id,
           publishThisAsset: true,
+
           onError: (e) => {
             console.error(e);
-          },
-          onStartup: (e) => {
-            console.log(e);
-          },
-          onProcessing: (e) => {
-            console.log(e);
-          },
-          onSuccess: (e) => {
-            console.log(e);
-          },
-        });
 
-        await updateDocument(`${appsCollection}/${application_id}/releases`, release_id, {
-          scan_virus_total: props.virus_total,
-          scan_version_name: props.version_name,
-          scan_version_code: props.version_code,
-          scan_version: props.version,
-          scan_size: props.size,
-          scan_target_sdk: props.target_sdk,
-          scan_min_sdk: props.min_sdk,
-          scan_max_sdk: props.max_sdk,
-          scan_hash: appsec.hash,
-          scan_app_name: appsec.app_name,
-          scan_file_name: appsec.file_name,
-          scan_score: appsec.security_score,
-          scan_security_score: appsec.security_score,
-          scan_total_trackers: appsec.total_trackers,
-          published: true,
-          published_at: Timestamp.now(),
-        });
+            onError?.(e?.message ?? 'An errur occured while publishing the application.');
 
-        await updateDocument(appsCollection, application_id, {
-          actual_release_id: release_id,
-          status: 'published',
-          published: true,
-          published_at: Timestamp.now(),
-        });
+            throw e;
+          },
+          onStartup: ({ payment }) => {
+            onInit?.(payment);
+          },
+          onProcessing: (r) => {
+            const { isInBlock, isFinalized, isCompleted, isError, log } = r;
 
-        let othersReleases = await getApplicationReleases({ applicationId: application_id });
-        othersReleases = othersReleases.filter((r) => r.id !== release_id);
-
-        if (othersReleases.length > 1) {
-          // eslint-disable-next-line no-plusplus
-          for (let index = 0; index < othersReleases.length; index++) {
-            const otherRelease = othersReleases[index];
-            // eslint-disable-next-line no-await-in-loop
-            await updateDocument(`${appsCollection}/${application_id}/releases`, otherRelease.id, {
-              published: false,
-              ...(otherRelease.published ? { un_published_at: Timestamp.now() } : {}),
+            onProcessing?.({ isInBlock, isFinalized, isCompleted, isError, log });
+          },
+          onSuccess: async ({ assetId }) => {
+            await updateDocument(`${appsCollection}/${application_id}/releases`, release_id, {
+              scan_virus_total: props.virus_total,
+              scan_version_name: props.version_name,
+              scan_version_code: props.version_code,
+              scan_version: props.version,
+              scan_size: props.size,
+              scan_target_sdk: props.target_sdk,
+              scan_min_sdk: props.min_sdk,
+              scan_max_sdk: props.max_sdk,
+              scan_hash: appsec.hash,
+              scan_app_name: appsec.app_name,
+              scan_file_name: appsec.file_name,
+              scan_score: appsec.security_score,
+              scan_security_score: appsec.security_score,
+              scan_total_trackers: appsec.total_trackers,
+              published: true,
+              published_at: Timestamp.now(),
             });
-          }
-        }
 
-        return release.id;
+            await updateDocument(appsCollection, application_id, {
+              actual_release_id: release_id,
+              status: 'published',
+              published: true,
+              published_at: Timestamp.now(),
+              asset_id: assetId,
+              onchain_id: assetId,
+            });
+
+            let othersReleases = await getApplicationReleases({ applicationId: application_id });
+            othersReleases = othersReleases.filter((r) => r.id !== release_id);
+
+            if (othersReleases.length > 1) {
+              // eslint-disable-next-line no-plusplus
+              for (let index = 0; index < othersReleases.length; index++) {
+                const otherRelease = othersReleases[index];
+                // eslint-disable-next-line no-await-in-loop
+                await updateDocument(
+                  `${appsCollection}/${application_id}/releases`,
+                  otherRelease.id,
+                  {
+                    published: false,
+                    ...(otherRelease.published ? { un_published_at: Timestamp.now() } : {}),
+                  }
+                );
+              }
+            }
+
+            onSuccess?.(release.id);
+          },
+        });
+      } else {
+        throw new Error(`Security score of application is too low : ${appsec?.security_score}`);
       }
-      throw new Error(`Security score of application is too low : ${appsec?.security_score}`);
     } else {
       throw new Error('Scan of application failed.');
     }
@@ -392,30 +411,65 @@ export async function publishApplicationRelease({ application_id, release_id, us
   }
 }
 
-export async function unPublishApplicationRelease({ application_id, release_id }) {
+export async function unPublishApplicationRelease({
+  application_id,
+  release_id,
+  user_account,
+  onSuccess,
+  onError,
+  onProcessing,
+  onInit,
+}) {
   try {
     const release = await getApplicationRelease({
       applicationId: application_id,
       releaseId: release_id,
     });
 
+    const application = await getDeveloperApplication({
+      applicationId: application_id,
+    });
+
     if (release?.published ?? false) {
-      await updateDocument(`${appsCollection}/${application_id}/releases`, release_id, {
-        published: false,
-        un_published_at: Timestamp.now(),
-      });
+      await pubUnblishAsset({
+        senderAddress: user_account,
+        assetId: application.asset_id,
+        publishThisAsset: false,
 
-      await updateDocument(appsCollection, application_id, {
-        actual_release_id: null,
-        status: 'un_published',
-        published: false,
-        un_published_at: Timestamp.now(),
-      });
+        onError: (e) => {
+          console.error(e);
 
-      return release.id;
+          onError?.(e?.message ?? 'An errur occured while publishing the application.');
+
+          throw e;
+        },
+        onStartup: ({ payment }) => {
+          onInit?.(payment);
+        },
+        onProcessing: (r) => {
+          const { isInBlock, isFinalized, isCompleted, isError, log } = r;
+
+          onProcessing?.({ isInBlock, isFinalized, isCompleted, isError, log });
+        },
+        onSuccess: async () => {
+          await updateDocument(`${appsCollection}/${application_id}/releases`, release_id, {
+            published: false,
+            un_published_at: Timestamp.now(),
+          });
+
+          await updateDocument(appsCollection, application_id, {
+            actual_release_id: null,
+            status: 'un_published',
+            published: false,
+            un_published_at: Timestamp.now(),
+          });
+
+          onSuccess?.(release.id);
+        },
+      });
+    } else {
+      throw new Error('Application release is not published.');
     }
-
-    throw new Error('Application release is not published.');
   } catch (error) {
     console.error(error);
 
@@ -423,71 +477,168 @@ export async function unPublishApplicationRelease({ application_id, release_id }
   }
 }
 
-export async function addNewApplication({ formData, user, categories }) {
+export async function addNewApplication({
+  formData,
+  user,
+  categories,
+  onSuccess,
+  onError,
+  onProcessing,
+  onInit,
+}) {
   try {
     const id = generateId();
 
-    const logo_image_square_url = await uploadFile({
-      filePath: `developers/${user.web3_account_id}/apps/${id}/images/${formData.logo_image_square.name}`,
-      file: formData.logo_image_square,
-      metadata: { user_id: user.id },
-    });
-
-    const cover_image_rect_url = formData.cover_image_rect
-      ? await uploadFile({
-          filePath: `developers/${user.web3_account_id}/apps/${id}/images/${formData.cover_image_rect.name}`,
-          file: formData.cover_image_rect,
-          metadata: { user_id: user.id },
-        })
+    const cover_image_rect_url = formData.cover_image_rect_url
+      ? formData.cover_image_rect_url
       : null;
-
-    // eslint-disable-next-line prefer-const
-    let screenshots = [];
-
-    // if (formData.app_screenshots) {
-    //   screenshots = await Promise.all(
-    //     formData.app_screenshots.map(async (file) => {
-    //       const url = await uploadFile({
-    //         filePath: `apps/${id}/screenshots/${file.name}`,
-    //         file,
-    //         metadata: { user_id: user.id },
-    //       });
-
-    //       console.log(url);
-    //     })
-    //   );
-
-    //   console.log({ screenshots });
-    // }
 
     const documentData = {
       ...formData,
       id,
       app_type: 'app',
+      category_id: formData.category_id,
       category_name: categories.find((category) => category.id === formData.category_id).label,
       has_in_app_purchases: formData.has_in_app_purchases === 'true',
       contains_ads: formData.contains_ads === 'true',
-      app_screenshots: null,
-      logo_image_square: null,
-      cover_image_rect: null,
-      logo_image_square_url,
-      screenshots,
+      logo_image_square_url: formData.logo_image_square_url,
+      screenshots: formData.screenshots,
       cover_image_rect_url,
-      min_age_required: formData.min_age_requirement,
-      note_averrage: 0,
+      min_age_required: toInteger(`${formData.min_age_requirement}`),
+      min_age_requirement: toInteger(`${formData.min_age_requirement}`),
+      notes_average: 0,
       downloads_count: 0,
       notes_count: 0,
       publisher_id: user.web3_account_id,
       publisher_name: user.web3_account_name,
+      publisher_address: user.web3_account_address,
       privacy_policy_link_url: formData.privacy_policy_link ?? '',
       created_at: Timestamp.fromDate(new Date()),
+
+      cid: null,
     };
 
-    const document = await addDocument(appsCollection, documentData, id);
+    await submitAsset({
+      user_web3_account_address: user.web3_account_address,
+      name: documentData.name,
+      assetType: documentData.app_type,
+      publishThisAsset: false,
 
-    return document;
+      price: documentData.price ?? 0,
+
+      assetJson: omit(documentData, ['downloads_count', 'cid', 'onchain_id']),
+
+      onStartup: ({ payment }) => {
+        onInit?.(payment);
+      },
+      onError: (e) => {
+        console.error(e);
+
+        onError?.(e?.message ?? 'An errur occured while submitting the application.');
+
+        throw e;
+      },
+
+      onProcessing: (r) => {
+        const { isInBlock, isFinalized, isCompleted, isError, log } = r;
+
+        onProcessing?.({ isInBlock, isFinalized, isCompleted, isError, log });
+      },
+      onSuccess: async ({ assetId }) => {
+        const document = await addDocument(
+          appsCollection,
+          { asset_id: assetId, onchain_id: assetId, ...documentData },
+          id
+        );
+
+        onSuccess?.({ id: document, assetId });
+      },
+    });
   } catch (error) {
     console.error(error);
+
+    onError?.(error?.message ?? 'An errur occured while submitting the application.');
+
+    throw error;
+  }
+}
+
+export async function editApplication({
+  formData,
+  applicationId,
+  user,
+  categories,
+  onSuccess,
+  onError,
+  onProcessing,
+  onInit,
+}) {
+  try {
+    if (!applicationId) {
+      throw new Error('Unable to edit this application at this time. Please try later.');
+    }
+
+    const application = await getDeveloperApplication({
+      applicationId,
+    });
+
+    const cover_image_rect_url = formData.cover_image_rect_url
+      ? formData.cover_image_rect_url
+      : null;
+
+    formData = { ...application, ...formData };
+
+    const documentData = {
+      ...formData,
+      category_id: formData.category_id,
+      category_name: categories.find((category) => category.id === formData.category_id).label,
+      has_in_app_purchases: formData.has_in_app_purchases === 'true',
+      contains_ads: formData.contains_ads === 'true',
+      logo_image_square_url: formData.logo_image_square_url,
+      screenshots: formData.screenshots,
+      cover_image_rect_url,
+      min_age_requirement: toInteger(`${formData.min_age_requirement}`),
+      privacy_policy_link_url: formData.privacy_policy_link ?? '',
+      updated_at: Timestamp.fromDate(new Date()),
+    };
+
+    await updateAsset({
+      senderAddress: user.web3_account_address,
+      assetId: application.onchain_id,
+      name: documentData.name,
+      assetType: documentData.app_type,
+      publishThisAsset: documentData.published,
+
+      price: documentData.price ?? 0,
+
+      assetJson: omit(documentData, ['downloads_count', 'cid', 'onchain_id']),
+
+      onStartup: ({ payment }) => {
+        onInit?.(payment);
+      },
+      onError: (e) => {
+        console.error(e);
+
+        onError?.(e?.message ?? 'An errur occured while submitting the application.');
+
+        throw e;
+      },
+
+      onProcessing: (r) => {
+        const { isInBlock, isFinalized, isCompleted, isError, log } = r;
+
+        onProcessing?.({ isInBlock, isFinalized, isCompleted, isError, log });
+      },
+      onSuccess: async () => {
+        await updateDocument(appsCollection, applicationId, documentData);
+
+        onSuccess?.({ id: applicationId, assetId: application.onchain_id });
+      },
+    });
+  } catch (error) {
+    console.error(error);
+
+    onError?.(error?.message ?? 'An errur occured while submitting the application.');
 
     throw error;
   }

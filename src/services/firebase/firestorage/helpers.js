@@ -1,4 +1,4 @@
-import { ref, uploadString, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
+import { ref, uploadString, deleteObject, getDownloadURL, uploadBytesResumable } from 'firebase/storage';
 
 import { storage } from '../config';
 import { handleStorageError } from './errors';
@@ -7,7 +7,7 @@ import { handleStorageError } from './errors';
  * Creates a Firebase Storage reference for a specified path.
  *
  * @param {string} filePath The path to the file within the bucket (e.g., "images/my_file.jpg").
- * @returns {firebase.storage.Reference} The Firebase Storage reference for the specified path.
+ * @returns {import('firebase/storage').StorageReference} The Firebase Storage reference for the specified path.
  * @throws {Error} Throws an error if the path is empty or invalid.
  */
 function createStorageRef(filePath) {
@@ -25,12 +25,21 @@ function createStorageRef(filePath) {
  * @param {File|Blob|Uint8Array} file The file object to upload.
  * @param {Object} metadata The file object metadata (such as name, size, and contentType).
  * @param {function(number)} onProgress Optional callback function to receive upload progress (0-100).
+ * @param {function(number, number)} onProgressBytes Optional callback function to receive upload progress with two values : bytesTransferred, adn totalBytes.
  * @param {function(String)} onError Optional callback function to get the error message.
  * @param {function(String)} onSuccess Optional callback function to get the download URL.
  * @returns {Promise<string>} A promise that resolves with the download URL of the uploaded file.
  * @throws {Error} Throws an error if the upload fails.
  */
-async function uploadFile({ filePath, file, metadata, onProgress, onError, onSuccess }) {
+async function uploadFile({
+  filePath,
+  file,
+  metadata,
+  onProgress,
+  onProgressBytes,
+  onError,
+  onSuccess,
+}) {
   const storageRef = createStorageRef(filePath);
 
   const uploadTask = uploadBytesResumable(storageRef, file, metadata);
@@ -49,6 +58,7 @@ async function uploadFile({ filePath, file, metadata, onProgress, onError, onSuc
       console.log(`Upload is ${progress}% done`);
 
       onProgress?.(progress);
+      onProgressBytes?.(snapshot.bytesTransferred, snapshot.totalBytes);
 
       // eslint-disable-next-line default-case
       switch (snapshot.state) {
@@ -107,30 +117,27 @@ async function uploadStringFile({ filePath, file, format, metadata }) {
 /**
  * Downloads a file from Firebase Storage as a blob.
  *
- * @param {firebase.storage.Reference} storageRef The Firebase Storage reference for the file to download.
- * @returns {Promise<Blob>} A promise that resolves with the downloaded file as a blob.
+ * @param {String} filePath The path to the file within the bucket (e.g., "images/my_file.jpg").
+ * @returns {Promise<String>} A promise that resolves with the downloaded file as a blob.
  * @throws {Error} Throws an error if the download fails.
  */
-async function downloadFile(storageRef) {
-  const url = await storageRef.getDownloadURL();
-  const response = await fetch(url);
+async function getFileDownloadURL(filePath) {
+  const storageRef = createStorageRef(filePath);
 
-  if (!response.ok) {
-    throw new Error(`Download failed with status ${response.status}`);
-  }
-
-  return response.blob();
+  return storageRef.getDownloadURL();
 }
 
 /**
  * Deletes a file from Firebase Storage.
  *
- * @param {firebase.storage.Reference} storageRef The Firebase Storage reference for the file to delete.
+ * @param {String} filePath The path to the file within the bucket (e.g., "images/my_file.jpg").
  * @returns {Promise<void>} A promise that resolves when the deletion is complete.
  * @throws {Error} Throws an error if the deletion fails.
  */
-async function deleteFile(storageRef) {
-  await storageRef.delete();
+async function deleteFile(filePath) {
+  const storageRef = createStorageRef(filePath);
+
+  return deleteObject(storageRef);
 }
 
 /**
@@ -158,4 +165,12 @@ async function listFiles(storageRef) {
   return items;
 }
 
-export { listFiles, uploadFile, deleteFile, downloadFile, getFileMetadata, uploadStringFile };
+export {
+  listFiles,
+  uploadFile,
+  deleteFile,
+  getFileMetadata,
+  createStorageRef,
+  uploadStringFile,
+  getFileDownloadURL,
+};

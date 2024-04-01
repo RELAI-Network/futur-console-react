@@ -137,6 +137,9 @@ export default function PublisherHomeView() {
           onClickRow={(id) => {
             router.push(`/books/view/${id}`);
           }}
+          onEditRow={(id) => {
+            router.push(`/books/edit/${id}`);
+          }}
         />
       )}
     </Container>

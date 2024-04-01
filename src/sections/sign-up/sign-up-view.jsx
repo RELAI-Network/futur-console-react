@@ -31,7 +31,7 @@ export default function SignUpView() {
 
   const [showPassword, setShowPassword] = useState(false);
 
-  const form = useFormValidation({});
+  const form = useFormValidation({ initialData: { role: 'developer' } });
 
   const handleClick = async () => {
     if (

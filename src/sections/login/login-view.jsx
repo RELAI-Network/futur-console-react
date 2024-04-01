@@ -28,7 +28,7 @@ export default function LoginView() {
 
   const { login, logout } = useAuth();
 
-  const form = useFormValidation({});
+  const form = useFormValidation({ initialData: { email: '', password: ''} });
 
   const [showPassword, setShowPassword] = useState(false);
 

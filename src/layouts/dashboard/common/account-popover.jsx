@@ -1,8 +1,10 @@
+/* eslint-disable no-debugger */
 import { useState } from 'react';
 import PropTypes from 'prop-types';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import Identicon from '@polkadot/react-identicon';
 
 import Box from '@mui/material/Box';
-import Avatar from '@mui/material/Avatar';
 import Divider from '@mui/material/Divider';
 import Popover from '@mui/material/Popover';
 import { alpha } from '@mui/material/styles';
@@ -56,13 +58,15 @@ export default function AccountPopover({ noActions = false }) {
         logout();
       },
     }).finally(() => {
-      handleClose();
+      handleClose(null);
     });
   };
 
   const handleClose = (url) => {
-    console.log(url);
-    if (url) router.push(url);
+    if (url) {
+      debugger;
+      router.push(url);
+    }
     setOpen(null);
   };
 
@@ -80,23 +84,22 @@ export default function AccountPopover({ noActions = false }) {
           }),
         }}
       >
-        <Avatar
-          src={user.photoURL}
-          alt={user.name}
+        <Identicon
+          value={user.web3_account_address}
+          size={36}
+          theme="substrate" /// 'polkadot', 'substrate' (default), 'beachball' or 'jdenticon'
           sx={{
             width: 36,
             height: 36,
             border: (theme) => `solid 2px ${theme.palette.background.default}`,
           }}
-        >
-          {user.name.charAt(0).toUpperCase()}
-        </Avatar>
+        />
       </IconButton>
 
       <Popover
         open={!!open}
         anchorEl={open}
-        onClose={handleClose}
+        onClose={() => handleClose()}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         PaperProps={{

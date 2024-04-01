@@ -12,8 +12,6 @@ import DashboardNoActionsLayout from 'src/layouts/dashboard/dashboard-no-actions
 const DevelopersProtectedLayout = ({ children }) => {
   const { user, status } = useAuth();
 
-  console.log('DevelopersProtectedLayout', user);
-
   if (status === 'idle' || status === 'pending') {
     return (
       <Backdrop sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }} open>

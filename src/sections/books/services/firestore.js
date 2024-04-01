@@ -2,7 +2,8 @@
 /* eslint-disable consistent-return */
 /* eslint-disable no-unreachable */
 // eslint-disable-next-line import/no-extraneous-dependencies
-import axios from 'axios';
+
+import { omit } from 'lodash';
 import { Timestamp } from 'firebase/firestore';
 
 import { uploadFile } from 'src/services/firebase/firestorage/helpers';
@@ -20,6 +21,8 @@ import {
   updateDocument,
   deleteDocument,
 } from 'src/services/firebase/firestore/helpers';
+
+import { submitAsset, updateAsset } from 'src/sections/apps/services/polkadot-tx';
 
 export async function getBooksCategories() {
   try {
@@ -41,9 +44,9 @@ export async function getPublisherBooks({ developerId }) {
   }
 }
 
-export async function getPublisherBook({ applicationId }) {
+export async function getPublisherBook({ bookId }) {
   try {
-    return getDocument(booksCollection, applicationId);
+    return getDocument(booksCollection, bookId);
   } catch (error) {
     console.error(error);
 
@@ -84,66 +87,23 @@ export async function getTags() {
     throw error;
   }
 }
-/**
- * Uploads a file to MobSF server.
- *
- * @param {Object} book_file - The file to be uploaded
- * @return {Promise<{scan_type: String, hash: String, file_name: String, status: String}>} The response data from the server
- */
-export async function uploadToMobSF(book_file) {
-  const formData = new FormData();
 
-  formData.append('file', book_file);
-
-  formData.append('fileName', book_file.name);
-
-  const config = {
-    headers: {
-      'X-Mobsf-Api-Key': import.meta.env.VITE_APP_MOBSF_KEY,
-      Authorization: import.meta.env.VITE_APP_MOBSF_KEY,
-      'Content-Type': 'multipart/form-data',
-    },
-  };
-
-  const { data } = await axios.post(
-    `${import.meta.env.VITE_APP_MOBSF_BASE_URL}/upload`,
-    formData,
-    config
-  );
-
-  return data;
-}
-
-export async function scanMobSF(hash) {
-  const formData = new FormData();
-
-  formData.append('hash', hash);
-
-  const config = {
-    headers: {
-      'X-Mobsf-Api-Key': import.meta.env.VITE_APP_MOBSF_KEY,
-      Authorization: import.meta.env.VITE_APP_MOBSF_KEY,
-      // 'Content-Type': null,
-    },
-  };
-
-  const { data } = await axios.post(
-    `${import.meta.env.VITE_APP_MOBSF_BASE_URL}/scan`,
-    formData,
-    config
-  );
-
-  return data;
-}
 export async function addAndPublishNewBookEdition({
   book_file,
   book_file_name,
   book_file_extension,
-  book_cover_file,
-  book_cover_file_name,
+  cover_url,
   publisher_id,
   publisher_name,
+  publisher_address,
   book_id,
+  onUploadProgress,
+
+  onSuccess,
+  onError,
+  onProcessing,
+  onInit,
+
   ...formData
 }) {
   try {
@@ -151,24 +111,20 @@ export async function addAndPublishNewBookEdition({
       book_id = await addNewBook({ publisher_id, publisher_name, ...formData });
     }
 
-    const bookCoverFileUrl = await uploadFile({
-      filePath: `developers/${publisher_id}/books/${book_id}/editions/covers/${book_cover_file_name}`,
-      file: book_cover_file,
-    });
-
     const bookFileUrl = await uploadFile({
       filePath: `developers/${publisher_id}/books/${book_id}/editions/${book_file_name}.${book_file_extension}`,
       file: book_file,
+      onProgress: onUploadProgress,
     });
 
     const { authors, isbn, language, price, type, title, resume } = formData;
 
-    const documentId = await addDocument(`${booksCollection}/${book_id}/editions`, {
-      cover_url: bookCoverFileUrl,
+    const bookEditionData = {
+      cover_url,
       file_extension: book_file_extension,
       file_main_url: bookFileUrl,
       authors,
-      isbn,
+      isbn: isbn ?? '',
       book_id,
       resume,
       title,
@@ -178,46 +134,175 @@ export async function addAndPublishNewBookEdition({
 
       published: true,
       published_at: Timestamp.now(),
-    });
+    };
 
-    await updateDocument(booksCollection, book_id, {
-      actual_edition_id: documentId,
-      status: 'published',
-      published: true,
-      published_at: Timestamp.now(),
-      updated_at: Timestamp.now(),
+    await submitAsset({
+      user_web3_account_address: publisher_address,
+      name: title,
+      assetType: 'book',
+      publishThisAsset: true,
 
-      cover_url: bookCoverFileUrl,
-      file_main_url: bookFileUrl,
-      authors,
-      isbn,
-      book_id,
-      resume,
-      title,
-      price,
-      type,
-      language,
-    });
+      price: price ?? 0,
 
-    let editions = await getBookEditions(book_id);
+      assetJson: omit(bookEditionData, ['downloads_count', 'cid', 'onchain_id']),
 
-    editions = editions.filter((book) => book.id !== documentId);
+      onStartup: ({ payment }) => {
+        onInit?.(payment);
+      },
+      onError: (e) => {
+        console.error(e);
 
-    if (editions.length > 1) {
-      // eslint-disable-next-line no-plusplus
-      for (let index = 0; index < editions.length; index++) {
-        const edition = editions[index];
-        // eslint-disable-next-line no-await-in-loop
-        await updateDocument(`${booksCollection}/${book_id}/editions`, edition.id, {
-          published: false,
-          ...(edition.published ? { un_published_at: Timestamp.now() } : {}),
+        onError?.(e?.message ?? 'An errur occured while adding the book edition.');
+
+        throw e;
+      },
+
+      onProcessing: (r) => {
+        const { isInBlock, isFinalized, isCompleted, isError, log } = r;
+
+        onProcessing?.({ isInBlock, isFinalized, isCompleted, isError, log });
+      },
+      onSuccess: async ({ assetId }) => {
+        const documentId = await addDocument(`${booksCollection}/${book_id}/editions`, {
+          ...bookEditionData,
+
+          downloads_count: 0,
+          onchain_id: assetId,
+          asset_id: assetId,
+          cid: null,
         });
-      }
-    }
 
-    return documentId;
+        const bookUpdateData = {
+          actual_edition_id: documentId,
+          status: 'published',
+          published: true,
+          published_at: Timestamp.now(),
+          updated_at: Timestamp.now(),
+
+          cover_url,
+          file_main_url: bookFileUrl,
+          authors,
+          isbn: isbn ?? '',
+          book_id,
+          resume,
+          title,
+          price,
+          type,
+          language,
+        };
+
+        await updateDocument(booksCollection, book_id, bookUpdateData);
+
+        onSuccess?.({ id: book_id, editionId: documentId, document, assetId });
+      },
+    });
   } catch (error) {
     console.error(error);
+
+    onError?.(error?.message ?? 'An errur occured while submitting the application.');
+
+    throw error;
+  }
+}
+
+export async function editBookEdition({
+  cover_url,
+  publisher_id,
+  publisher_name,
+  publisher_address,
+  book_id,
+  edition_id,
+  onUploadProgress,
+
+  onSuccess,
+  onError,
+  onProcessing,
+  onInit,
+
+  ...formData
+}) {
+  try {
+    if (!book_id || !edition_id) {
+      throw new Error('Unable to edit this book at this time. Please try later.');
+    }
+
+    const bookEdition = await getBookEdition({ bookId: book_id, editionId: edition_id });
+
+    const { authors, isbn, language, price, type, title, resume } = formData;
+
+    const bookEditionData = {
+      ...bookEdition,
+      cover_url,
+      authors,
+      isbn: isbn ?? '',
+      book_id,
+      resume,
+      title,
+      price,
+      type,
+      language,
+
+      updated_at: Timestamp.now(),
+    };
+
+    await updateAsset({
+      senderAddress: publisher_address,
+      assetId: bookEdition.onchain_id,
+      name: title,
+      assetType: 'book',
+      publishThisAsset: bookEdition.published ?? true,
+
+      price: price ?? 0,
+
+      assetJson: omit(bookEditionData, ['downloads_count', 'cid', 'onchain_id']),
+
+      onStartup: ({ payment }) => {
+        onInit?.(payment);
+      },
+      onError: (e) => {
+        console.error(e);
+
+        onError?.(e?.message ?? 'An errur occured while adding the book edition.');
+
+        throw e;
+      },
+
+      onProcessing: (r) => {
+        const { isInBlock, isFinalized, isCompleted, isError, log } = r;
+
+        onProcessing?.({ isInBlock, isFinalized, isCompleted, isError, log });
+      },
+      onSuccess: async () => {
+        await updateDocument(`${booksCollection}/${book_id}/editions`, edition_id, bookEditionData);
+
+        const book = await getPublisherBook({ bookId: book_id });
+
+        const bookUpdateData = {
+          updated_at: Timestamp.now(),
+
+          ...(book.actual_edition_id === edition_id
+            ? {
+                cover_url,
+                authors,
+                isbn: isbn ?? '',
+                resume,
+                title,
+                price,
+                type,
+                language,
+              }
+            : {}),
+        };
+
+        await updateDocument(booksCollection, book_id, bookUpdateData);
+
+        onSuccess?.({ id: book_id, editionId: edition_id, document });
+      },
+    });
+  } catch (error) {
+    console.error(error);
+
+    onError?.(error?.message ?? 'An errur occured while submitting the application.');
 
     throw error;
   }
@@ -290,7 +375,7 @@ export async function addNewBook({ publisher_id, publisher_name, ...formData }) 
       category_id,
       description,
       genre,
-      isbn,
+      isbn: isbn ?? '',
       resume,
       title,
       price,

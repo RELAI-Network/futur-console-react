@@ -53,7 +53,7 @@ export default function GamesView() {
         </Stack>
         <Box>
           <Button
-            href="games/create"
+            onClick={() => router.push('/games/create')}
             variant="contained"
             color="inherit"
             startIcon={<Iconify icon="eva:plus-fill" />}

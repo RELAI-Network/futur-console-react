@@ -1,5 +1,7 @@
 /* eslint-disable no-debugger */
+import { useMemo } from 'react';
 import { toInteger } from 'lodash';
+import PropTypes from 'prop-types';
 import 'filepond/dist/filepond.min.css';
 import { FilePond, registerPlugin } from 'react-filepond';
 import FilePondPluginImagePreview from 'filepond-plugin-image-preview';
@@ -27,9 +29,14 @@ import { useFormValidation } from 'src/utils/forms/hooks/useFormValidation';
 import FormSelect from 'src/components/form/select';
 import RadioInput from 'src/components/form/radio_input';
 import CircularLoader from 'src/components/loader/CircularLoader';
+import FilePondFirebaseInputField from 'src/components/form/filepond_firebase';
 
 import { bookTypes, bookGenres, bookLanguages } from '../constants';
-import { getBooksCategories, addAndPublishNewBookEdition } from '../services/firestore';
+import {
+  editBookEdition,
+  getBooksCategories,
+  addAndPublishNewBookEdition,
+} from '../services/firestore';
 
 // Register the plugins
 registerPlugin(
@@ -40,8 +47,16 @@ registerPlugin(
 
 // ----------------------------------------------------------------------
 
-export default function CreateNewBook() {
-  const form = useFormValidation({ is_free: true, min_age_requirement: 12 });
+export default function CreateNewEditBook({ formData = {} }) {
+  const form = useFormValidation({
+    initialData: {
+      is_free: true,
+      min_age_requirement: 12,
+      ...(formData === null ? {} : formData),
+    },
+  });
+
+  const editing = useMemo(() => !!formData, [formData]);
 
   const { user } = useAuth();
 
@@ -61,8 +76,8 @@ export default function CreateNewBook() {
           resume: 'Enter book resume.',
 
           // 2 - Presentation
-          cover_image: 'Select your book cover image.',
-          ebook_file: 'Fill in your book file.',
+          cover_url: 'Select your book cover image.',
+          ...(editing ? {} : { ebook_file: 'Fill in your book file.' }),
 
           // 3 - Additionnal
           authors: 'Add book authors.',
@@ -83,7 +98,6 @@ export default function CreateNewBook() {
           language: 'Indicate book language.',
         },
         setFieldError: (field, message) => {
-          console.log(field, message);
           form.setFieldError(field, message);
 
           form.setSubmitError(message);
@@ -94,30 +108,62 @@ export default function CreateNewBook() {
     ) {
       form.setSubmitting(true);
 
-      addAndPublishNewBookEdition({
-        book_file: form.data.ebook_file,
-        book_file_name: form.data.ebook_file.name,
-        book_file_extension: form.data.ebook_file.name.split('.').pop(),
+      try {
+        if (editing) {
+          await editBookEdition({
+            book_id: form.data.book_id,
+            edition_id: form.data.id,
 
-        book_cover_file: form.data.cover_image,
-        book_cover_file_name: form.data.cover_image.name,
+            cover_url: form.data.cover_url,
 
-        publisher_id: user.publisher_id,
-        publisher_name: user.publisher_name ?? user.web3_account_name,
+            publisher_id: user.publisher_id,
+            publisher_name: user.publisher_name ?? user.web3_account_name,
+            publisher_address: user.web3_account_address,
 
-        categories,
+            categories,
 
-        ...{ ...form.data, is_free: `${form.data.is_free ?? true}` === 'true' },
-      })
-        .then((bookId) => {
-          router.push(`/books/view/${bookId}`);
-        })
-        .catch((e) => {
-          form.setSubmitError(e?.message ?? 'An error occured.');
-        })
-        .finally(() => {
-          form.setSubmitting(false);
-        });
+            onSuccess: ({ id }) => {
+              router.push(`/books/view/${id}`);
+            },
+            onError: (e) => {
+              form.setSubmitting(false);
+
+              form.setSubmitError(e?.message ?? 'An error occured while editing the book.');
+            },
+
+            ...{ ...form.data, is_free: `${form.data.is_free ?? true}` === 'true' },
+          });
+        } else {
+          await addAndPublishNewBookEdition({
+            book_file: form.data.ebook_file,
+            book_file_name: form.data.ebook_file.name,
+            book_file_extension: form.data.ebook_file.name.split('.').pop(),
+
+            cover_url: form.data.cover_url,
+
+            publisher_id: user.publisher_id,
+            publisher_name: user.publisher_name ?? user.web3_account_name,
+            publisher_address: user.web3_account_address,
+
+            categories,
+
+            onSuccess: ({ id }) => {
+              router.push(`/books/view/${id}`);
+            },
+            onError: (e) => {
+              form.setSubmitting(false);
+
+              form.setSubmitError(e?.message ?? 'An error occured while adding the book.');
+            },
+
+            ...{ ...form.data, is_free: `${form.data.is_free ?? true}` === 'true' },
+          });
+        }
+      } catch (error) {
+        form.setSubmitting(false);
+
+        form.setSubmitError(error?.message ?? 'An error occured.');
+      }
     } else {
       form.setSubmitError('Enter valid informations.');
     }
@@ -125,7 +171,7 @@ export default function CreateNewBook() {
 
   return (
     <Container maxWidth="xl">
-      <Typography variant="h4">Add new book</Typography>
+      <Typography variant="h4">{editing ? 'Edit book' : 'Add new book'}</Typography>
       <Divider color="primary" />
       <br />
       {loadingCategories ? (
@@ -146,6 +192,8 @@ export default function CreateNewBook() {
                 helperText={form.validationErrors.title}
                 error={!!form.validationErrors.title}
                 onChange={(e) => form.setFieldValue('title', e.target.value)}
+                value={form.data.title}
+                focused
                 size="small"
                 fullWidth
               />
@@ -157,6 +205,8 @@ export default function CreateNewBook() {
                 helperText={form.validationErrors.isbn}
                 error={!!form.validationErrors.isbn}
                 onChange={(e) => form.setFieldValue('isbn', e.target.value)}
+                value={form.data.isbn}
+                focused
                 size="small"
                 fullWidth
               />
@@ -199,6 +249,10 @@ export default function CreateNewBook() {
                 helperText={form.validationErrors.description}
                 error={!!form.validationErrors.description}
                 onChange={(e) => form.setFieldValue('description', e.target.value)}
+                value={form.data.description}
+                multiline
+                rows={3}
+                focused
                 size="medium"
                 fullWidth
                 minRows={3}
@@ -212,6 +266,8 @@ export default function CreateNewBook() {
                 helperText={form.validationErrors.resume}
                 error={!!form.validationErrors.resume}
                 onChange={(e) => form.setFieldValue('resume', e.target.value)}
+                value={form.data.resume}
+                focused
                 size="large"
                 fullWidth
                 multiline
@@ -228,73 +284,59 @@ export default function CreateNewBook() {
               <Typography variant="h6">2. Presentation</Typography>
             </Grid>
             <Grid item xs={12} md={6}>
-              <FilePond
+              <FilePondFirebaseInputField
                 label="Book Cover Image"
-                files={form.data.cover_image ? [form.data.cover_image] : []}
-                onaddfilestart={({ file }) => {
-                  if (file && file.type && file.type.startsWith('image/')) {
-                    /* empty */
-                  } else {
-                    throw new Error('Select a valid image');
-                  }
-                }}
-                onupdatefiles={(files) => {
-                  const file = files?.[0]?.file;
-
-                  if (file && file.type && file.type.startsWith('image/')) {
-                    form.setFieldValue('cover_image', file);
-                  } else {
-                    form.setFieldError('cover_image', 'Select a valid image');
-                  }
-                }}
-                allowMultiple={false}
-                maxFiles={1}
+                hint="Book Cover Image"
+                name="cover_url"
+                value={form.data.cover_url}
+                setValue={(value) => form.setFieldValue('cover_url', value)}
                 required
                 acceptedFileTypes={['image/*']}
-                name="cover_image"
-                labelIdle="Book Cover Image"
+                uploadBasePath={`developers/${user.web3_account_id}/books/covers`}
               />
-              <Typography color="error">{form.validationErrors.cover_image}</Typography>
+              <Typography color="error">{form.validationErrors.cover_url}</Typography>
             </Grid>
 
             <Grid item xs={12} md={6}>
-              <FilePond
-                files={form.data.ebook_file ? [form.data.ebook_file] : []}
-                onremovefile={() => {
-                  form.setFieldValue('ebook_file', null);
-                }}
-                onaddfilestart={({ file }) => {
-                  if (
-                    file &&
-                    file.type &&
-                    (file.type === 'application/pdf' || file.type === 'application/epub+zip')
-                  ) {
-                    /* empty */
-                  } else {
-                    throw new Error('Select a valid ebook document file.');
-                  }
-                }}
-                onupdatefiles={(files) => {
-                  const file = files?.[0]?.file;
-
-                  if (file) {
+              {editing || (
+                <FilePond
+                  files={form.data.ebook_file ? [form.data.ebook_file] : []}
+                  onremovefile={() => {
+                    form.setFieldValue('ebook_file', null);
+                  }}
+                  onaddfilestart={({ file }) => {
                     if (
+                      file &&
                       file.type &&
                       (file.type === 'application/pdf' || file.type === 'application/epub+zip')
                     ) {
-                      form.setFieldValue('ebook_file', file);
+                      /* empty */
                     } else {
-                      form.setFieldError('ebook_file', 'Select a valid ebook document file.');
+                      throw new Error('Select a valid ebook document file.');
                     }
-                  }
-                }}
-                allowMultiple={false}
-                maxFiles={1}
-                required
-                acceptedFileTypes={['application/pdf', 'application/epub+zip']}
-                name="ebook_file"
-                labelIdle="Ebook Document File"
-              />
+                  }}
+                  onupdatefiles={(files) => {
+                    const file = files?.[0]?.file;
+
+                    if (file) {
+                      if (
+                        file.type &&
+                        (file.type === 'application/pdf' || file.type === 'application/epub+zip')
+                      ) {
+                        form.setFieldValue('ebook_file', file);
+                      } else {
+                        form.setFieldError('ebook_file', 'Select a valid ebook document file.');
+                      }
+                    }
+                  }}
+                  allowMultiple={false}
+                  maxFiles={1}
+                  required
+                  acceptedFileTypes={['application/pdf', 'application/epub+zip']}
+                  name="ebook_file"
+                  labelIdle="Ebook Document File"
+                />
+              )}
               <Typography color="error">{form.validationErrors.ebook_file}</Typography>
             </Grid>
           </Grid>
@@ -314,6 +356,8 @@ export default function CreateNewBook() {
                 helperText={form.validationErrors.authors}
                 error={!!form.validationErrors.authors}
                 onChange={(e) => form.setFieldValue('authors', e.target.value)}
+                value={form.data.authors}
+                focused
                 size="small"
                 fullWidth
               />
@@ -327,6 +371,8 @@ export default function CreateNewBook() {
                 helperText={form.validationErrors.min_age_requirement}
                 error={!!form.validationErrors.min_age_requirement}
                 onChange={(e) => form.setFieldValue('min_age_requirement', e.target.value)}
+                value={form.data.min_age_requirement}
+                focused
                 size="small"
                 fullWidth
               />
@@ -358,7 +404,7 @@ export default function CreateNewBook() {
               {`${form.data.is_free ?? true}` === 'true' ? null : (
                 <TextField
                   name="price"
-                  label="Price in $"
+                  label="Price in $RL"
                   type="number"
                   required
                   helperText={form.validationErrors.price}
@@ -410,8 +456,12 @@ export default function CreateNewBook() {
         loading={form.submitting}
         onClick={createBookFunc}
       >
-        Add new book
+        {editing ? 'Update Book' : 'Add new book'}
       </LoadingButton>
     </Container>
   );
 }
+
+CreateNewEditBook.propTypes = {
+  formData: PropTypes.object,
+};

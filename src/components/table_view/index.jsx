@@ -33,6 +33,7 @@ export default function Tableview({
   showHeader = true,
   showSearchAndFilter = true,
   onClickRow,
+  onEditRow,
 }) {
   const [page, setPage] = useState(0);
 
@@ -64,6 +65,8 @@ export default function Tableview({
   };
 
   const handleClick = (event, id) => {
+    event.stopPropagation();
+
     const selectedIndex = selected.indexOf(id);
     let newSelected = [];
     if (selectedIndex === -1) {
@@ -153,6 +156,7 @@ export default function Tableview({
                       selected={selected.indexOf(row[identifier]) !== -1}
                       handleClick={(event) => handleClick(event, row[identifier])}
                       onClick={onClickRow ? () => onClickRow(row[identifier], row) : null}
+                      onEdit={onEditRow ? () => onEditRow(row[identifier], row) : null}
                     />
                   ))}
 
@@ -191,4 +195,5 @@ Tableview.propTypes = {
   showHeader: PropTypes.bool,
   showSearchAndFilter: PropTypes.bool,
   onClickRow: PropTypes.func,
+  onEditRow: PropTypes.func,
 };

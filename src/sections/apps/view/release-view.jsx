@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { Timestamp } from 'firebase/firestore';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -18,6 +19,8 @@ import { useRouter } from 'src/routes/hooks';
 
 import { useAuth } from 'src/hooks/use_auth';
 import usePromise from 'src/hooks/use_promise';
+
+import { addDocument } from 'src/services/firebase/firestore/helpers';
 
 import Iconify from 'src/components/iconify';
 import CircularLoader from 'src/components/loader/CircularLoader';
@@ -65,6 +68,20 @@ export default function ReleaseView() {
         const scanResult = await scanMobSF(release?.scan_hash);
 
         setScanningResult(scanResult);
+
+        if ((scanResult?.appsec?.security_score ?? 0) > minScanScore) {
+          await addDocument(
+            `apps_scans`,
+            {
+              application_id: applicationId,
+              scan_score: scanResult?.appsec?.security_score,
+              scan_hash: release?.scan_hash,
+              scanned_at: Timestamp.now(),
+            },
+            applicationId,
+            { merge: true }
+          );
+        }
       } catch (error) {
         setScanningApp(false);
       }
@@ -75,38 +92,58 @@ export default function ReleaseView() {
 
   const publish = async () => {
     setPublishing(true);
+    setPublishingError('');
 
     if ((scanningResult?.appsec?.security_score ?? release?.scan_score ?? 0) > minScanScore) {
-      publishApplicationRelease({
-        application_id: applicationId,
-        release_id: releaseId,
-        user_account: user?.web3_account_address,
-      })
-        .then(() => router.reload())
-        .catch((e) =>
-          setPublishingError(e?.message ?? 'An error occured while publishing the application.')
-        )
-        .finally(() => setPublishing(false));
-    } else {
-      setPublishing(false);
+      setPublishing(true);
+      setPublishingError('');
+
+      try {
+        await publishApplicationRelease({
+          application_id: applicationId,
+          release_id: releaseId,
+          user_account: user?.web3_account_address,
+          onSuccess: () => router.reload(),
+          onError: (e) => {
+            setPublishing(false);
+
+            setPublishingError(e?.message ?? 'An error occured while publishing the application.');
+          },
+        });
+      } catch (e) {
+        setPublishingError(e?.message ?? 'An error occured while publishing the application.');
+
+        setPublishing(false);
+      }
     }
   };
 
   const unPublish = async () => {
-    setUnPublishing(true);
-
     if (release.published ?? false) {
-      unPublishApplicationRelease({
-        application_id: applicationId,
-        release_id: releaseId,
-      })
-        .then(() => router.reload())
-        .catch((e) =>
-          setPublishingError(e?.message ?? 'An error occured while unpublishing the application.')
-        )
-        .finally(() => setUnPublishing(false));
-    } else {
-      setUnPublishing(false);
+      setUnPublishing(true);
+      setPublishingError('');
+
+      try {
+        await unPublishApplicationRelease({
+          application_id: applicationId,
+          release_id: releaseId,
+          user_account: user?.web3_account_address,
+
+          onSuccess: () => router.reload(),
+
+          onError: (e) => {
+            setUnPublishing(false);
+
+            setPublishingError(
+              e?.message ?? 'An error occured while unpublishing the application.'
+            );
+          },
+        });
+      } catch (e) {
+        setPublishingError(e?.message ?? 'An error occured while publishing the application.');
+
+        setUnPublishing(false);
+      }
     }
   };
 
@@ -165,10 +202,10 @@ export default function ReleaseView() {
                   <span style={{ fontWeight: 'bold' }}>
                     {release?.created_at?.seconds
                       ? new Date(release?.created_at?.seconds * 1000).toLocaleString('en-US', {
-                        timeZone: 'UTC',
-                        dateStyle: 'medium',
-                        timeStyle: 'medium',
-                      })
+                          timeZone: 'UTC',
+                          dateStyle: 'medium',
+                          timeStyle: 'medium',
+                        })
                       : null}
                   </span>
                 </Typography>
@@ -229,7 +266,7 @@ export default function ReleaseView() {
                   </Stack>
                 ) : (
                   <Stack direction="column" alignItems="center" justifyContent="center" spacing={1}>
-                    <Button
+                    <LoadingButton
                       disabled={scanningApp || publishing}
                       onClick={scanApp}
                       loading={scanningApp}
@@ -241,10 +278,10 @@ export default function ReleaseView() {
                         : scanningResult
                           ? 'Relaunch scan'
                           : 'Launch scan'}
-                    </Button>
+                    </LoadingButton>
                     {(scanningResult?.appsec?.security_score ?? 0) > minScanScore && (
                       <Stack direction="column" alignItems="center" justifyContent="end">
-                        <Button
+                        <LoadingButton
                           disabled={scanningApp || publishing}
                           onClick={publish}
                           loading={publishing}
@@ -252,10 +289,7 @@ export default function ReleaseView() {
                           color="secondary"
                         >
                           {publishing ? 'Publishing...' : 'Publish release'}
-                        </Button>
-                        {publishingError && (
-                          <Typography color="error">{publishingError}</Typography>
-                        )}
+                        </LoadingButton>
                       </Stack>
                     )}
                   </Stack>
@@ -263,6 +297,7 @@ export default function ReleaseView() {
               </Box>
             </Stack>
           )}
+          {publishingError && <Typography color="error">{publishingError}</Typography>}
           {scanningApp && (
             <Stack direction="column" alignItems="center" justifyContent="center">
               <CircularLoader />

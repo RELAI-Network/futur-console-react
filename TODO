@@ -1,37 +1,3 @@
-Dashboard
+Pouvoir Télécharger le rapport du scan : http://34.163.36.166:8000/api_docs#generate-pdf-report-api
 
-Apps
-	Overview
-	Informations
-	Releases
-	Notes
-	Revenues
-	Configuration
-	
-Games
-	Overview
-	Informations
-	Releases
-	Notes
-	Revenues
-	Configuration
-
-Books
-	Overview
-	Informations
-	Releases
-	Notes
-	Revenues
-	Configuration
-
-Users
-
-Account
-
-Monetization
-
-Advanced Settings
-
-Developer Settings
-
-Settings
+Sauvegarder les résultats du scan pour ne pas avoir a le relancer

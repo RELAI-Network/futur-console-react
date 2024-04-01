@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
 import PropTypes from 'prop-types';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import Identicon from '@polkadot/react-identicon';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Drawer from '@mui/material/Drawer';
 import Button from '@mui/material/Button';
-import Avatar from '@mui/material/Avatar';
 import { alpha } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import ListItemButton from '@mui/material/ListItemButton';
@@ -50,7 +51,11 @@ export default function Nav({ noActions = false, openNav, onCloseNav, navConfig 
         bgcolor: (theme) => alpha(theme.palette.grey[500], 0.12),
       }}
     >
-      <Avatar src={user.photoURL} alt="photoURL" />
+      <Identicon
+        value={user.web3_account_address}
+        size={36}
+        theme="substrate" /// 'polkadot', 'substrate' (default), 'beachball' or 'jdenticon'
+      />
 
       <Box sx={{ ml: 2 }}>
         <Typography variant="subtitle2">{user.name}</Typography>

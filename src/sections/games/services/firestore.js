@@ -1,12 +1,13 @@
 /* eslint-disable no-unreachable */
 // eslint-disable-next-line import/no-extraneous-dependencies
 import axios from 'axios';
+import { omit, toInteger } from 'lodash';
 import { Timestamp } from 'firebase/firestore';
 
-import { uploadFile } from 'src/services/firebase/firestorage/helpers';
 import { getAll, addDocument } from 'src/services/firebase/firestore/helpers';
 import { appsCollection, categoriesCollection } from 'src/services/firebase/firestore/constants';
 
+import { submitAsset } from 'src/sections/apps/services/polkadot-tx';
 import {
   getApplicationReleases,
   getDeveloperApplication,
@@ -95,68 +96,90 @@ export async function scanMobSF({ hash }) {
   return data;
 }
 
-export async function addNewGame({ formData, user, categories }) {
+export async function addNewGame({
+  formData,
+  user,
+  categories,
+  onSuccess,
+  onError,
+  onProcessing,
+  onInit,
+}) {
   try {
     const id = generateId();
 
-    const logo_image_square_url = await uploadFile({
-      filePath: `developers/${user.web3_account_id}/games/${id}/images/${formData.logo_image_square.name}`,
-      file: formData.logo_image_square,
-      metadata: { user_id: user.id },
-    });
+    const logo_image_square_url = formData.logo_image_square;
 
-    const cover_image_rect_url = formData.cover_image_rect
-      ? await uploadFile({
-          filePath: `developers/${user.web3_account_id}/games/${id}/images/${formData.cover_image_rect.name}`,
-          file: formData.cover_image_rect,
-          metadata: { user_id: user.id },
-        })
-      : null;
+    const cover_image_rect_url = formData.cover_image_rect ? formData.cover_image_rect : null;
 
-    let screenshots = [];
+    const screenshots = formData.app_screenshots;
 
-    if (formData.app_screenshots) {
-      screenshots = await Promise.all(
-        formData.app_screenshots.map(async (file) => {
-          const url = await uploadFile({
-            filePath: `developers/${user.web3_account_id}/games/${id}/screenshots${file.name}`,
-            file,
-            metadata: { user_id: user.id },
-          });
-
-          screenshots = [...screenshots, url];
-        })
-      );
-    }
+    formData = omit(formData, ['logo_image_square', 'cover_image_rect', 'app_screenshots']);
 
     const documentData = {
       ...formData,
       id,
       app_type: 'game',
+      category_id: formData.category_id,
       category_name: categories.find((category) => category.id === formData.category_id).label,
       has_in_app_purchases: formData.has_in_app_purchases === 'true',
       contains_ads: formData.contains_ads === 'true',
-      logo_image_square: null,
-      cover_image_rect: null,
       logo_image_square_url,
       screenshots,
-      app_screenshots: null,
       cover_image_rect_url,
-      min_age_required: formData.min_age_requirement,
-      note_averrage: 0,
+      min_age_requirement: toInteger(`${formData.min_age_requirement}`),
+      notes_average: 0,
       downloads_count: 0,
       notes_count: 0,
       publisher_id: user.web3_account_id,
       publisher_name: user.web3_account_name,
+      publisher_address: user.web3_account_address,
       privacy_policy_link_url: formData.privacy_policy_link ?? '',
       created_at: Timestamp.fromDate(new Date()),
+
+      cid: null,
     };
 
-    const document = await addDocument(appsCollection, documentData, id);
+    await submitAsset({
+      user_web3_account_address: user.web3_account_address,
+      name: documentData.name,
+      assetType: documentData.app_type,
+      publishThisAsset: false,
 
-    return document;
+      price: documentData.price ?? 0,
+
+      assetJson: omit(documentData, ['downloads_count', 'cid', 'onchain_id']),
+
+      onStartup: ({ payment }) => {
+        onInit?.(payment);
+      },
+      onError: (e) => {
+        console.error(e);
+
+        onError?.(e?.message ?? 'An errur occured while submitting the game.');
+
+        throw e;
+      },
+
+      onProcessing: (r) => {
+        const { isInBlock, isFinalized, isCompleted, isError, log } = r;
+
+        onProcessing?.({ isInBlock, isFinalized, isCompleted, isError, log });
+      },
+      onSuccess: async ({ assetId }) => {
+        const document = await addDocument(
+          appsCollection,
+          { asset_id: assetId, onchain_id: assetId, ...documentData },
+          id
+        );
+
+        onSuccess?.({ id: document, assetId });
+      },
+    });
   } catch (error) {
     console.error(error);
+
+    onError?.(error?.message ?? 'An errur occured while submitting the game.');
 
     throw error;
   }

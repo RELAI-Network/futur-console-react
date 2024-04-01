@@ -20,19 +20,17 @@ import Iconify from 'src/components/iconify';
 import Tableview from 'src/components/table_view';
 import CircularLoader from 'src/components/loader/CircularLoader';
 
-import { getApplicationReleases, getDeveloperApplication } from '../services/firestore';
+import { getBookEditions, getPublisherBook } from '../services/firestore';
 
 export default function AppView() {
-  const { id: applicationId } = useParams();
+  const { id: bookId } = useParams();
 
   const router = useRouter();
 
-  const { data: application, loading: applicationLoading } = usePromise(() =>
-    getDeveloperApplication({ applicationId })
-  );
+  const { data: book, loading: bookLoaading } = usePromise(() => getPublisherBook({ bookId }));
 
-  const { data: releases, loading: releasesLoading } = usePromise(async () =>
-    getApplicationReleases({ applicationId })
+  const { data: editions, loading: editionsLoading } = usePromise(async () =>
+    getBookEditions(bookId)
   );
 
   return (
@@ -52,7 +50,7 @@ export default function AppView() {
         </Stack>
         <Divider color="primary" />
         <br />
-        {applicationLoading ? (
+        {bookLoaading ? (
           <CircularLoader />
         ) : (
           <Stack
@@ -63,81 +61,58 @@ export default function AppView() {
             justifyContent="space-between"
           >
             <Stack direction="row" alignItems="center">
-              <img
-                src={application.logo_image_square_url}
-                alt={application.name + ' logo'}
-                width={54}
-                height={54}
-              />{' '}
+              <img src={book.cover_url} alt={book.title + ' logo'} width={54} height={54} />{' '}
               <Box ml={2}>
-                <Typography variant="h5">{application.name}</Typography>
+                <Typography variant="h5">{book.title}</Typography>
                 <Typography>
-                  ID : <span style={{ fontWeight: 'bold' }}>{application.id}</span>
+                  ID : <span style={{ fontWeight: 'bold' }}>{book.id}</span>
                 </Typography>
               </Box>
             </Stack>
-            <Stack  spacing={2}>
+            <Box>
               <Button
-                onClick={() => router.push(`/apps/edit/${applicationId}`)}
-                variant="contained"
-                color="warning"
-              >
-                Edit
-              </Button>
-              <Button
-                onClick={() => router.push(`/apps/view/${applicationId}/add-release`)}
+                onClick={() => router.push(`/books/view/${bookId}/add-edition`)}
                 variant="contained"
                 color="primary"
               >
-                Add new release
+                Add new edition
               </Button>
-            </Stack>
+            </Box>
           </Stack>
         )}
       </Stack>
       <br />
-      <Typography variant="h6">Releases</Typography>
+      <Typography variant="h6">Editions</Typography>
       <Divider color="primary" />
       <br />
-      {applicationLoading ? null : releasesLoading ? (
+      {bookLoaading ? null : editionsLoading ? (
         <CircularLoader />
       ) : (
         <Tableview
           addNewBtnLabel="Add"
-          title="Releases"
+          title="Editions"
           fields={[
             {
-              attribute: 'version',
-            },
-            {
-              attribute: 'version_code',
-            },
-            {
-              attribute: 'size',
-              builder: (size) => (
-                <TableCell align="left">{Math.round(size / 1024 ** 2) + ' Mo'}</TableCell>
+              attribute: 'cover_url',
+              builder: (coverImageUrl) => (
+                <img src={coverImageUrl} alt="Cover" width={54} height={54} />
               ),
             },
             {
-              attribute: 'created_at',
-              builder: (createdAt) => (
-                <TableCell align="left">
-                  {new Date(createdAt.seconds * 1000).toLocaleDateString()}
-                </TableCell>
-              ),
+              attribute: 'title',
             },
+
             {
               attribute: 'published_at',
-              builder: (at) => (
+              builder: (createdAt) => (
                 <TableCell align="left">
-                  {at?.seconds ? new Date(at.seconds * 1000).toLocaleDateString() : null}
+                  {createdAt?.seconds
+                    ? new Date(createdAt.seconds * 1000).toLocaleDateString()
+                    : null}
                 </TableCell>
               ),
             },
-            {
-              attribute: 'downloads_count',
-              textAlign: 'center',
-            },
+
             {
               attribute: 'published',
               builder: (published, release) => (
@@ -146,43 +121,57 @@ export default function AppView() {
                 </TableCell>
               ),
             },
+            {
+              attribute: 'file_main_url',
+              builder: (download) => (
+                <TableCell align="center" sx={{ cursor: 'pointer', color: 'primary' }}>
+                  <Iconify
+                    onClick={(e) => {
+                      e.stopPropagation();
+
+                      window.open(download, '_blank', 'noopener,noreferrer');
+                      return false;
+                    }}
+                    color="primary"
+                    icon="material-symbols:download"
+                    width={24}
+                    height={24}
+                  />
+                </TableCell>
+              ),
+            },
           ]}
           headers={[
             {
-              attribute: 'version',
-              label: 'Version',
+              attribute: 'cover_url',
+              label: 'Cover',
             },
             {
-              attribute: 'version_code',
-              label: 'Code Version',
+              attribute: 'title',
+              label: 'Title',
             },
-            {
-              attribute: 'size',
-              label: 'Taille',
-            },
-            {
-              attribute: 'created_at',
-              label: 'Added at',
-            },
+
             {
               attribute: 'published_at',
-              label: 'Published at',
+              label: 'Added at',
             },
-            {
-              attribute: 'downloads_count',
-              label: 'Installations',
-            },
+
             {
               attribute: 'published',
               label: 'Status',
             },
+            {
+              attribute: 'download',
+              label: 'Download',
+              textAlign: 'center',
+            },
           ]}
           identifier="id"
-          items={releases || []}
+          items={editions || []}
           showHeader={false}
           showSearchAndFilter={false}
           onClickRow={(id) => {
-            router.push(`/apps/view/${applicationId}/release/${id}`);
+            router.push(`/books/view/${bookId}/edition/${id}`);
           }}
         />
       )}
