@@ -155,6 +155,9 @@ export default function BooksView() {
           onClickRow={(id) => {
             router.push(`/books/view/${id}`);
           }}
+          onEditRow={(id) => {
+            router.push(`/books/edit/${id}`);
+          }}
         />
       )}
     </Container>

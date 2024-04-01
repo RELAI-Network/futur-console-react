@@ -4,10 +4,10 @@ import axios from 'axios';
 import { omit, toInteger } from 'lodash';
 import { Timestamp } from 'firebase/firestore';
 
-import { getAll, addDocument } from 'src/services/firebase/firestore/helpers';
+import { getAll, addDocument, updateDocument } from 'src/services/firebase/firestore/helpers';
 import { appsCollection, categoriesCollection } from 'src/services/firebase/firestore/constants';
 
-import { submitAsset } from 'src/sections/apps/services/polkadot-tx';
+import { submitAsset, updateAsset } from 'src/sections/apps/services/polkadot-tx';
 import {
   getApplicationReleases,
   getDeveloperApplication,
@@ -108,13 +108,9 @@ export async function addNewGame({
   try {
     const id = generateId();
 
-    const logo_image_square_url = formData.logo_image_square;
-
-    const cover_image_rect_url = formData.cover_image_rect ? formData.cover_image_rect : null;
-
-    const screenshots = formData.app_screenshots;
-
-    formData = omit(formData, ['logo_image_square', 'cover_image_rect', 'app_screenshots']);
+    const cover_image_rect_url = formData.cover_image_rect_url
+      ? formData.cover_image_rect_url
+      : null;
 
     const documentData = {
       ...formData,
@@ -124,8 +120,8 @@ export async function addNewGame({
       category_name: categories.find((category) => category.id === formData.category_id).label,
       has_in_app_purchases: formData.has_in_app_purchases === 'true',
       contains_ads: formData.contains_ads === 'true',
-      logo_image_square_url,
-      screenshots,
+      logo_image_square_url: formData.logo_image_square_url,
+      screenshots: formData.screenshots,
       cover_image_rect_url,
       min_age_requirement: toInteger(`${formData.min_age_requirement}`),
       notes_average: 0,
@@ -180,6 +176,85 @@ export async function addNewGame({
     console.error(error);
 
     onError?.(error?.message ?? 'An errur occured while submitting the game.');
+
+    throw error;
+  }
+}
+
+export async function editGame({
+  formData,
+  gameId,
+  user,
+  categories,
+  onSuccess,
+  onError,
+  onProcessing,
+  onInit,
+}) {
+  try {
+    if (!gameId) {
+      throw new Error('Unable to edit this game at this time. Please try later.');
+    }
+
+    const game = getDeveloperGame({ applicationId: gameId });
+
+    const cover_image_rect_url = formData.cover_image_rect_url
+      ? formData.cover_image_rect_url
+      : null;
+
+    formData = { ...game, ...formData };
+
+    const documentData = {
+      ...formData,
+      category_id: formData.category_id,
+      category_name: categories.find((category) => category.id === formData.category_id).label,
+      has_in_app_purchases: formData.has_in_app_purchases === 'true',
+      contains_ads: formData.contains_ads === 'true',
+      logo_image_square_url: formData.logo_image_square_url,
+      screenshots: formData.screenshots,
+      cover_image_rect_url,
+      min_age_requirement: toInteger(`${formData.min_age_requirement}`),
+      privacy_policy_link_url: formData.privacy_policy_link ?? '',
+      updated_at: Timestamp.fromDate(new Date()),
+    };
+
+    await updateAsset({
+      senderAddress: user.web3_account_address,
+      assetId: game.onchain_id,
+      name: documentData.name,
+      assetType: documentData.app_type,
+      publishThisAsset: documentData.published,
+
+      price: documentData.price ?? 0,
+
+      assetJson: omit(documentData, ['downloads_count', 'cid', 'onchain_id']),
+
+      onStartup: ({ payment }) => {
+        onInit?.(payment);
+      },
+      onError: (e) => {
+        console.error(e);
+
+        onError?.(e?.message ?? 'An errur occured while updating the game.');
+
+        throw e;
+      },
+
+      onProcessing: (r) => {
+        const { isInBlock, isFinalized, isCompleted, isError, log } = r;
+
+        onProcessing?.({ isInBlock, isFinalized, isCompleted, isError, log });
+      },
+      onSuccess: async () => {
+        await updateDocument(appsCollection, gameId, documentData);
+
+        onSuccess?.({ id: gameId, assetId: game.onchain_id });
+      },
+    });
+  } catch (error) {
+    console.error(error);
+
+    onError?.(error?.message ?? 'An errur occured while updating the game.');
 
     throw error;
   }

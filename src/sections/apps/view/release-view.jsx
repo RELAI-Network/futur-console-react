@@ -74,7 +74,9 @@ export default function ReleaseView() {
             `apps_scans`,
             {
               application_id: applicationId,
+              developer_id: user.publisher_id,
               scan_score: scanResult?.appsec?.security_score,
+              app_name: scanResult?.appsec?.file_name,
               scan_hash: release?.scan_hash,
               scanned_at: Timestamp.now(),
             },

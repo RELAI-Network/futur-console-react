@@ -24,6 +24,7 @@ export const EditAppPage = lazy(() => import('src/pages/edit-app'));
 export const GamesPage = lazy(() => import('src/pages/games'));
 export const GamePage = lazy(() => import('src/pages/game'));
 export const CreateGamePage = lazy(() => import('src/pages/create-game'));
+export const EditGamePage = lazy(() => import('src/pages/edit-game'));
 
 export const BooksPage = lazy(() => import('src/pages/books'));
 export const BookPage = lazy(() => import('src/pages/book'));
@@ -78,6 +79,7 @@ export default function Router() {
 
         { element: <GamesPage />, path: 'games' },
         { element: <GamePage />, path: 'games/view/:id' },
+        { element: <EditGamePage />, path: 'games/edit/:id' },
         { element: <CreateGamePage />, path: 'games/create' },
 
         { element: <AddNewReleasePage />, path: 'apps/view/:id/add-release' },

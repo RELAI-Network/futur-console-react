@@ -131,6 +131,9 @@ export default function GamesView() {
           onClickRow={(id) => {
             router.push(`/games/view/${id}`);
           }}
+          onEditRow={(id) => {
+            router.push(`/games/edit/${id}`);
+          }}
         />
       )}
     </Container>

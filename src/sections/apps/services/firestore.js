@@ -195,13 +195,13 @@ export async function addNewApplicationRelease({
     // }
 
     const applicationPackageFileUrl = await uploadFile({
-      filePath: `developers/${publisher_id}/${app_type}s/${application_id}/releases/${package_name}-${formData.version}.apk`,
+      filePath: `developers/${publisher_id}/apps/${application_id}/releases/${package_name}-${formData.version}.apk`,
       file: formData.package_file,
       onProgress: onUploadProgress,
     });
 
     const applicationLogoUrl = await uploadStringFile({
-      filePath: `developers/${publisher_id}/${app_type}s/${application_id}/releases/logo-${formData.version}`,
+      filePath: `developers/${publisher_id}/apps/${application_id}/releases/logo-${formData.version}`,
       file: formData.package_icon,
       format: 'data_url',
     });
@@ -619,7 +619,7 @@ export async function editApplication({
       onError: (e) => {
         console.error(e);
 
-        onError?.(e?.message ?? 'An errur occured while submitting the application.');
+        onError?.(e?.message ?? 'An errur occured while updating the application.');
 
         throw e;
       },

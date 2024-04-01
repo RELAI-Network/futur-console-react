@@ -49,20 +49,24 @@ registerPlugin(
 
 // ----------------------------------------------------------------------
 
-export default function CreateNewApp({ formData = {} }) {
+export default function CreateNewApp({ formData = null }) {
+  const { user } = useAuth();
+
   const form = useFormValidation({
     initialData: {
       contains_ads: false,
       has_in_app_purchases: false,
       is_free: true,
       min_age_requirement: 12,
-      ...(formData === null ? {} : formData),
+      ...(formData === null
+        ? {
+            email: user?.email,
+          }
+        : formData),
     },
   });
 
   const editing = useMemo(() => !!formData, [formData]);
-
-  const { user } = useAuth();
 
   const router = useRouter();
 
@@ -398,45 +402,6 @@ export default function CreateNewApp({ formData = {} }) {
                 name="contains_ads"
               />
             </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                name="min_age_requirement"
-                label="Min age required"
-                type="number"
-                required
-                helperText={form.validationErrors.min_age_requirement}
-                error={!!form.validationErrors.min_age_requirement}
-                onChange={(e) => form.setFieldValue('min_age_requirement', e.target.value)}
-                value={form.data.min_age_requirement}
-                focused
-                size="small"
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <RadioInput
-                row
-                sx={{ marginY: 1, flexDirection: 'row' }}
-                labelSx={{ marginY: 'auto', marginRight: 'auto' }}
-                error={form.validationErrors.has_in_app_purchases}
-                helperText={form.validationErrors.has_in_app_purchases}
-                label="Has in app purchases"
-                variant="outlined"
-                items={[
-                  { label: 'YES', value: true },
-                  { label: 'NO', value: false },
-                ]}
-                onChange={(value) => {
-                  form.setFieldValue('has_in_app_purchases', value);
-                }}
-                id="has_in_app_purchases"
-                value={form.data.has_in_app_purchases}
-                itemValueBuilder={(item) => item.value}
-                itemLabelBuilder={(item) => item.label}
-                name="has_in_app_purchases"
-              />
-            </Grid>
             <Grid item xs={12} md={6}>
               <RadioInput
                 row
@@ -477,6 +442,45 @@ export default function CreateNewApp({ formData = {} }) {
                 />
               )}
             </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                name="min_age_requirement"
+                label="Min age required"
+                type="number"
+                required
+                helperText={form.validationErrors.min_age_requirement}
+                error={!!form.validationErrors.min_age_requirement}
+                onChange={(e) => form.setFieldValue('min_age_requirement', e.target.value)}
+                value={form.data.min_age_requirement}
+                focused
+                size="small"
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <RadioInput
+                row
+                sx={{ marginY: 1, flexDirection: 'row' }}
+                labelSx={{ marginY: 'auto', marginRight: 'auto' }}
+                error={form.validationErrors.has_in_app_purchases}
+                helperText={form.validationErrors.has_in_app_purchases}
+                label="Has in app purchases"
+                variant="outlined"
+                items={[
+                  { label: 'YES', value: true },
+                  { label: 'NO', value: false },
+                ]}
+                onChange={(value) => {
+                  form.setFieldValue('has_in_app_purchases', value);
+                }}
+                id="has_in_app_purchases"
+                value={form.data.has_in_app_purchases}
+                itemValueBuilder={(item) => item.value}
+                itemLabelBuilder={(item) => item.label}
+                name="has_in_app_purchases"
+              />
+            </Grid>
+
             <Grid item xs={12} md={6}>
               <TextField
                 name="package_name"

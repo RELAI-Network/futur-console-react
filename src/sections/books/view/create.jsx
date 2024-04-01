@@ -47,7 +47,7 @@ registerPlugin(
 
 // ----------------------------------------------------------------------
 
-export default function CreateNewEditBook({ formData = {} }) {
+export default function CreateNewEditBook({ formData = null }) {
   const form = useFormValidation({
     initialData: {
       is_free: true,

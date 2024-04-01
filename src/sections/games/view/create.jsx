@@ -1,5 +1,7 @@
 /* eslint-disable no-debugger */
+import { useMemo } from 'react';
 import { toInteger } from 'lodash';
+import PropTypes from 'prop-types';
 import 'filepond/dist/filepond.min.css';
 import { registerPlugin } from 'react-filepond';
 import FilePondPluginImagePreview from 'filepond-plugin-image-preview';
@@ -10,6 +12,7 @@ import FilePondPluginImageExifOrientation from 'filepond-plugin-image-exif-orien
 
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
+import Stack from '@mui/material/Stack';
 import Divider from '@mui/material/Divider';
 import TextField from '@mui/material/TextField';
 import Container from '@mui/material/Container';
@@ -24,6 +27,7 @@ import usePromise from 'src/hooks/use_promise';
 import { validateSchemas } from 'src/utils/forms/validator';
 import { useFormValidation } from 'src/utils/forms/hooks/useFormValidation';
 
+import Iconify from 'src/components/iconify';
 import FormSelect from 'src/components/form/select';
 import RadioInput from 'src/components/form/radio_input';
 import CircularLoader from 'src/components/loader/CircularLoader';
@@ -31,7 +35,7 @@ import FilePondFirebaseInputField from 'src/components/form/filepond_firebase';
 
 import { getTags } from 'src/sections/apps/services/firestore';
 
-import { addNewGame, getGamesCategories } from '../services/firestore';
+import { editGame, addNewGame, getGamesCategories } from '../services/firestore';
 
 // Register the plugins
 registerPlugin(
@@ -42,17 +46,24 @@ registerPlugin(
 
 // ----------------------------------------------------------------------
 
-export default function CreateNewGame() {
+export default function CreateNewGame({ formData = null }) {
+  const { user } = useAuth();
+
   const form = useFormValidation({
     initialData: {
       contains_ads: false,
       has_in_app_purchases: false,
       is_free: true,
       min_age_requirement: 12,
+      ...(formData === null
+        ? {
+            email: user?.email,
+          }
+        : formData),
     },
   });
 
-  const { user } = useAuth();
+  const editing = useMemo(() => !!formData, [formData]);
 
   const router = useRouter();
 
@@ -71,9 +82,9 @@ export default function CreateNewGame() {
           description: 'Enter game description.',
 
           // 2 - Presentation
-          logo_image_square: 'Select your game main logo.',
-          // cover_image_rect: 'Select your game cover image.',
-          app_screenshots: ({ value }) => {
+          logo_image_square_url: 'Select your game main logo.',
+          // cover_image_rect_url: 'Select your game cover image.',
+          screenshots: ({ value }) => {
             if (!value || (value ?? []).length < 2) {
               return 'Add at least two screenshot.';
             }
@@ -123,19 +134,36 @@ export default function CreateNewGame() {
       form.setSubmitting(true);
 
       try {
-        await addNewGame({
-          formData: form.data,
-          categories,
-          user,
-          onSuccess: ({ id }) => {
-            router.push(`/games/view/${id}`);
-          },
-          onError: (e) => {
-            form.setSubmitting(false);
+        if (editing) {
+          await editGame({
+            formData: form.data,
+            gameId: form.data.id,
+            categories,
+            user,
+            onSuccess: ({ id }) => {
+              router.push(`/games/view/${id}`);
+            },
+            onError: (e) => {
+              form.setSubmitting(false);
 
-            form.setSubmitError(e?.message ?? 'An error occured while creating the game.');
-          },
-        });
+              form.setSubmitError(e?.message ?? 'An error occured while creating the game.');
+            },
+          });
+        } else {
+          await addNewGame({
+            formData: form.data,
+            categories,
+            user,
+            onSuccess: ({ id }) => {
+              router.push(`/games/view/${id}`);
+            },
+            onError: (e) => {
+              form.setSubmitting(false);
+
+              form.setSubmitError(e?.message ?? 'An error occured while creating the game.');
+            },
+          });
+        }
       } catch (error) {
         form.setSubmitting(false);
 
@@ -148,7 +176,18 @@ export default function CreateNewGame() {
 
   return (
     <Container maxWidth="xl">
-      <Typography variant="h4">Create new game</Typography>
+      <Stack mb={1} direction="row" alignItems="center" justifyContent="start">
+        <Iconify
+          color="primary"
+          sx={{ mr: 1 }}
+          icon="material-symbols:arrow-back-ios"
+          width={24}
+          height={24}
+          onClick={() => router.push('/apps')}
+          cursor="pointer"
+        />
+        <Typography variant="h4">{editing ? 'Edit game' : 'Create new game'}</Typography>
+      </Stack>
       <Divider color="primary" />
       <br />
       {loadingCategories || loadingTags ? (
@@ -169,6 +208,8 @@ export default function CreateNewGame() {
                 helperText={form.validationErrors.name}
                 error={!!form.validationErrors.name}
                 onChange={(e) => form.setFieldValue('name', e.target.value)}
+                value={form.data.name}
+                focused
                 size="small"
                 fullWidth
               />
@@ -197,6 +238,8 @@ export default function CreateNewGame() {
                 helperText={form.validationErrors.email}
                 error={!!form.validationErrors.email}
                 onChange={(e) => form.setFieldValue('email', e.target.value)}
+                value={form.data.email}
+                focused
                 size="small"
                 fullWidth
               />
@@ -209,6 +252,8 @@ export default function CreateNewGame() {
                 helperText={form.validationErrors.website}
                 error={!!form.validationErrors.website}
                 onChange={(e) => form.setFieldValue('website', e.target.value)}
+                value={form.data.website}
+                focused
                 size="small"
                 fullWidth
               />
@@ -221,6 +266,8 @@ export default function CreateNewGame() {
                 helperText={form.validationErrors.description}
                 error={!!form.validationErrors.description}
                 onChange={(e) => form.setFieldValue('description', e.target.value)}
+                value={form.data.description}
+                focused
                 size="medium"
                 fullWidth
                 multiline
@@ -240,40 +287,40 @@ export default function CreateNewGame() {
               <FilePondFirebaseInputField
                 label="Game Logo Image * (512x512)"
                 hint="Game Logo Image *"
-                name="logo_image_square"
-                value={form.data.logo_image_square}
-                setValue={(value) => form.setFieldValue('logo_image_square', value)}
+                name="logo_image_square_url"
+                value={form.data.logo_image_square_url}
+                setValue={(value) => form.setFieldValue('logo_image_square_url', value)}
                 acceptedFileTypes={['image/*']}
                 required
-                uploadBasePath={`developers/${user.web3_account_id}/games/logo`}
+                uploadBasePath={`developers/${user.web3_account_id}/apps/logo`}
               />
-              <Typography color="error">{form.validationErrors.logo_image_square}</Typography>
+              <Typography color="error">{form.validationErrors.logo_image_square_url}</Typography>
             </Grid>
 
             <Grid item xs={12} md={6}>
               <FilePondFirebaseInputField
                 label="Game Cover Image * (1000x512)"
                 hint="Game Cover Image"
-                name="cover_image_rect"
-                value={form.data.cover_image_rect}
-                setValue={(value) => form.setFieldValue('cover_image_rect', value)}
+                name="cover_image_rect_url"
+                value={form.data.cover_image_rect_url}
+                setValue={(value) => form.setFieldValue('cover_image_rect_url', value)}
                 acceptedFileTypes={['image/*']}
                 required
-                uploadBasePath={`developers/${user.web3_account_id}/games/covers`}
+                uploadBasePath={`developers/${user.web3_account_id}/apps/covers`}
               />
-              <Typography color="error">{form.validationErrors.cover_image_rect}</Typography>
+              <Typography color="error">{form.validationErrors.cover_image_rect_url}</Typography>
             </Grid>
             <Grid item xs={12}>
               <FilePondFirebaseInputField
-                name="app_screenshots"
+                name="screenshots"
                 acceptedFileTypes={['image/*']}
                 hint="Game Screenshots"
                 label="Game Screenshots"
                 maxFiles={8}
                 multiple
                 required
-                setValue={(value) => form.setFieldValue('app_screenshots', value)}
-                value={form.data.app_screenshots}
+                setValue={(value) => form.setFieldValue('screenshots', value)}
+                value={form.data.screenshots}
                 validateFile={(file) => {
                   if (file.type && file.type.startsWith('image/')) {
                     /* empty */
@@ -281,10 +328,10 @@ export default function CreateNewGame() {
                     throw new Error('Select a valid image');
                   }
                 }}
-                uploadBasePath={`developers/${user.web3_account_id}/games/screenshots`}
+                uploadBasePath={`developers/${user.web3_account_id}/apps/screenshots`}
                 helperText="At least two screenshots"
               />
-              <Typography color="error">{form.validationErrors.app_screenshots}</Typography>
+              <Typography color="error">{form.validationErrors.screenshots}</Typography>
             </Grid>
             <Grid item xs={12} md={6}>
               <TextField
@@ -293,6 +340,8 @@ export default function CreateNewGame() {
                 helperText={form.validationErrors.video_trailer_url}
                 error={!!form.validationErrors.video_trailer_url}
                 onChange={(e) => form.setFieldValue('video_trailer_url', e.target.value)}
+                value={form.data.video_trailer_url}
+                focused
                 size="small"
                 fullWidth
               />
@@ -381,6 +430,8 @@ export default function CreateNewGame() {
                   helperText={form.validationErrors.price}
                   error={!!form.validationErrors.price}
                   onChange={(e) => form.setFieldValue('price', e.target.value)}
+                  value={form.data.price}
+                  focused
                   size="small"
                   fullWidth
                 />
@@ -395,6 +446,8 @@ export default function CreateNewGame() {
                 helperText={form.validationErrors.min_age_requirement}
                 error={!!form.validationErrors.min_age_requirement}
                 onChange={(e) => form.setFieldValue('min_age_requirement', e.target.value)}
+                value={form.data.min_age_requirement}
+                focused
                 size="small"
                 fullWidth
               />
@@ -430,6 +483,8 @@ export default function CreateNewGame() {
                 helperText={form.validationErrors.package_name}
                 error={!!form.validationErrors.package_name}
                 onChange={(e) => form.setFieldValue('package_name', e.target.value)}
+                value={form.data.package_name}
+                focused
                 size="small"
                 fullWidth
               />
@@ -442,6 +497,8 @@ export default function CreateNewGame() {
                 helperText={form.validationErrors.privacy_policy_link}
                 error={!!form.validationErrors.privacy_policy_link}
                 onChange={(e) => form.setFieldValue('privacy_policy_link', e.target.value)}
+                value={form.data.privacy_policy_link}
+                focused
                 size="small"
                 fullWidth
               />
@@ -461,8 +518,12 @@ export default function CreateNewGame() {
         loading={form.submitting}
         onClick={createAppFunc}
       >
-        Create new game
+        {editing ? 'Update game' : 'Create new game'}
       </LoadingButton>
     </Container>
   );
 }
+
+CreateNewGame.propTypes = {
+  formData: PropTypes.object,
+};

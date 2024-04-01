@@ -134,8 +134,8 @@ export default function HomeView() {
           onClickRow={(id, item) => {
             router.push(`/${item?.app_type ?? 'apps'}s/view/${id}`);
           }}
-          onEditRow={(id) => {
-            router.push(`/apps/edit/${id}`);
+          onEditRow={(id, item) => {
+            router.push(`/${item?.app_type ?? 'apps'}s/edit/${id}`);
           }}
         />
       )}
