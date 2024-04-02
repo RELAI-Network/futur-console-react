@@ -3,9 +3,11 @@
 /* eslint-disable react/prop-types */
 
 import { useParams } from 'react-router-dom';
+import Identicon from '@polkadot/react-identicon';
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
+// import Rating from '@mui/material/Rating';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import Container from '@mui/material/Container';
@@ -16,11 +18,12 @@ import { useRouter } from 'src/routes/hooks';
 
 import usePromise from 'src/hooks/use_promise';
 
+import Div from 'src/components/commons/Div';
 import Iconify from 'src/components/iconify';
 import Tableview from 'src/components/table_view';
 import CircularLoader from 'src/components/loader/CircularLoader';
 
-import { getBookEditions, getPublisherBook } from '../services/firestore';
+import { getBookReviews, getPublisherBook } from '../services/firestore';
 
 export default function AppView() {
   const { id: bookId } = useParams();
@@ -29,8 +32,8 @@ export default function AppView() {
 
   const { data: book, loading: bookLoaading } = usePromise(() => getPublisherBook({ bookId }));
 
-  const { data: editions, loading: editionsLoading } = usePromise(async () =>
-    getBookEditions(bookId)
+  const { data: reviews, loading: reviewsLoading } = usePromise(async () =>
+    getBookReviews({ bookId })
   );
 
   return (
@@ -82,97 +85,90 @@ export default function AppView() {
         )}
       </Stack>
       <br />
-      <Typography variant="h6">Editions</Typography>
+      <Typography variant="h6">Reviews</Typography>
       <Divider color="primary" />
       <br />
-      {bookLoaading ? null : editionsLoading ? (
+      {bookLoaading ? null : reviewsLoading ? (
         <CircularLoader />
       ) : (
         <Tableview
           addNewBtnLabel="Add"
-          title="Editions"
+          title="Reviews"
           fields={[
             {
-              attribute: 'cover_url',
-              builder: (coverImageUrl) => (
-                <img src={coverImageUrl} alt="Cover" width={54} height={54} />
+              attribute: 'address',
+              builder: (address) => (
+                <Div
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    justifyItems: 'center',
+                    justifySelf: 'center',
+                  }}
+                >
+                  <Identicon
+                    value={address}
+                    size={36}
+                    theme="substrate" /// 'polkadot', 'substrate' (default), 'beachball' or 'jdenticon'
+                  />
+                </Div>
               ),
             },
             {
-              attribute: 'title',
+              attribute: 'rating',
+              // builder: (rating) => (
+              //   <Rating name="read-only" value={rating} readOnly />
+              // ),
             },
-
             {
-              attribute: 'published_at',
+              attribute: 'comment',
+              builder: (comment) => (
+                // <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+                <Typography
+                  sx={{
+                    wordBreak: 'break-all',
+                    maxWidth: 300,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {comment.length > 100 ? comment.substring(0, 100) + '...' : comment}
+                </Typography>
+              ),
+              
+            },
+            {
+              attribute: 'added_at',
               builder: (createdAt) => (
                 <TableCell align="left">
-                  {createdAt?.seconds
-                    ? new Date(createdAt.seconds * 1000).toLocaleDateString()
-                    : null}
-                </TableCell>
-              ),
-            },
-
-            {
-              attribute: 'published',
-              builder: (published, release) => (
-                <TableCell sx={{ color: published ? 'green' : 'orange' }} align="left">
-                  {published ? 'Published' : release.status ?? 'Unpublished'}
-                </TableCell>
-              ),
-            },
-            {
-              attribute: 'file_main_url',
-              builder: (download) => (
-                <TableCell align="center" sx={{ cursor: 'pointer', color: 'primary' }}>
-                  <Iconify
-                    onClick={(e) => {
-                      e.stopPropagation();
-
-                      window.open(download, '_blank', 'noopener,noreferrer');
-                      return false;
-                    }}
-                    color="primary"
-                    icon="material-symbols:download"
-                    width={24}
-                    height={24}
-                  />
+                  {new Date(createdAt.seconds * 1000).toLocaleDateString()}
                 </TableCell>
               ),
             },
           ]}
           headers={[
             {
-              attribute: 'cover_url',
-              label: 'Cover',
+              attribute: 'address',
+              label: 'User',
             },
             {
-              attribute: 'title',
-              label: 'Title',
+              attribute: 'rating',
+              label: 'Note',
             },
-
             {
-              attribute: 'published_at',
+              attribute: 'comment',
+              label: 'Comment',
+            },
+            {
+              attribute: 'added_at',
               label: 'Added at',
-            },
-
-            {
-              attribute: 'published',
-              label: 'Status',
-            },
-            {
-              attribute: 'download',
-              label: 'Download',
-              textAlign: 'center',
             },
           ]}
           identifier="id"
-          items={editions || []}
+          items={reviews || []}
           showHeader={false}
           showSearchAndFilter={false}
-          onClickRow={(id) => {
-            router.push(`/books/view/${bookId}/edition/${id}`);
-          }}
         />
       )}
     </Container>

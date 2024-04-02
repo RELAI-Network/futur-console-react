@@ -34,6 +34,18 @@ export async function getBooksCategories() {
   }
 }
 
+export async function getBookReviews({ bookId }) {
+  try {
+    const reviews = await getAll(`${booksCollection}/${bookId}/reviews`);
+
+    return reviews.sort((a, b) => b.added_at - a.added_at);
+  } catch (error) {
+    console.error(error);
+
+    throw error;
+  }
+}
+
 export async function getPublisherBooks({ developerId }) {
   try {
     return getAllWhere(booksCollection, 'publisher_id', '==', developerId);
@@ -54,27 +66,27 @@ export async function getPublisherBook({ bookId }) {
   }
 }
 
-export async function getBookEditions(bookId) {
-  try {
-    const editions = await getAll(`${booksCollection}/${bookId}/editions`);
+// export async function getBookEditions(bookId) {
+//   try {
+//     const editions = await getAll(`${booksCollection}/${bookId}/editions`);
 
-    return editions.sort((a, b) => b.created_at - a.created_at);
-  } catch (error) {
-    console.error(error);
+//     return editions.sort((a, b) => b.created_at - a.created_at);
+//   } catch (error) {
+//     console.error(error);
 
-    throw error;
-  }
-}
+//     throw error;
+//   }
+// }
 
-export async function getBookEdition({ bookId, editionId }) {
-  try {
-    return getDocument(`${booksCollection}/${bookId}/editions`, editionId);
-  } catch (error) {
-    console.error(error);
+// export async function getBookEdition({ bookId, editionId }) {
+//   try {
+//     return getDocument(`${booksCollection}/${bookId}/editions`, editionId);
+//   } catch (error) {
+//     console.error(error);
 
-    throw error;
-  }
-}
+//     throw error;
+//   }
+// }
 
 export async function getTags() {
   try {
@@ -88,7 +100,11 @@ export async function getTags() {
   }
 }
 
-export async function addAndPublishNewBookEdition({
+function generateId() {
+  return Math.floor(Math.random() * (999999999999999 - 100000000000000 + 1)) + 100000000000000;
+}
+
+export async function addAndPublishNewBook({
   book_file,
   book_file_name,
   book_file_extension,
@@ -96,7 +112,7 @@ export async function addAndPublishNewBookEdition({
   publisher_id,
   publisher_name,
   publisher_address,
-  book_id,
+
   onUploadProgress,
 
   onSuccess,
@@ -107,30 +123,40 @@ export async function addAndPublishNewBookEdition({
   ...formData
 }) {
   try {
-    if (!book_id) {
-      book_id = await addNewBook({ publisher_id, publisher_name, ...formData });
-    }
+    const book_id = generateId();
+
+    const { authors, isbn, language, price, type, title, resume, category_id, description, genre } =
+      formData;
 
     const bookFileUrl = await uploadFile({
-      filePath: `developers/${publisher_id}/books/${book_id}/editions/${book_file_name}.${book_file_extension}`,
+      filePath: `developers/${publisher_id}/books/${book_id}/${book_file_name}.${book_file_extension}`,
       file: book_file,
       onProgress: onUploadProgress,
     });
 
-    const { authors, isbn, language, price, type, title, resume } = formData;
-
-    const bookEditionData = {
-      cover_url,
-      file_extension: book_file_extension,
-      file_main_url: bookFileUrl,
+    const bookData = {
       authors,
+      category_id,
+      description,
+      genre,
+      id: book_id,
       isbn: isbn ?? '',
-      book_id,
       resume,
       title,
       price,
       type,
       language,
+      publisher_id,
+      publisher_name,
+      publisher_address,
+      created_at: Timestamp.now(),
+
+      cover_url,
+      file_main_url: bookFileUrl,
+      book_id,
+
+      file_extension: book_file_extension,
+      file_name: book_file_name,
 
       published: true,
       published_at: Timestamp.now(),
@@ -144,7 +170,7 @@ export async function addAndPublishNewBookEdition({
 
       price: price ?? 0,
 
-      assetJson: omit(bookEditionData, ['downloads_count', 'cid', 'onchain_id']),
+      assetJson: bookData,
 
       onStartup: ({ payment }) => {
         onInit?.(payment);
@@ -163,35 +189,19 @@ export async function addAndPublishNewBookEdition({
         onProcessing?.({ isInBlock, isFinalized, isCompleted, isError, log });
       },
       onSuccess: async ({ assetId }) => {
-        const documentId = await addDocument(`${booksCollection}/${book_id}/editions`, {
-          ...bookEditionData,
+        const documentId = await addDocument(
+          booksCollection,
+          {
+            ...bookData,
 
-          downloads_count: 0,
-          onchain_id: assetId,
-          asset_id: assetId,
-          cid: null,
-        });
-
-        const bookUpdateData = {
-          actual_edition_id: documentId,
-          status: 'published',
-          published: true,
-          published_at: Timestamp.now(),
-          updated_at: Timestamp.now(),
-
-          cover_url,
-          file_main_url: bookFileUrl,
-          authors,
-          isbn: isbn ?? '',
-          book_id,
-          resume,
-          title,
-          price,
-          type,
-          language,
-        };
-
-        await updateDocument(booksCollection, book_id, bookUpdateData);
+            status: 'published',
+            downloads_count: 0,
+            onchain_id: assetId,
+            asset_id: assetId,
+            cid: null,
+          },
+          book_id
+        );
 
         onSuccess?.({ id: book_id, editionId: documentId, document, assetId });
       },
@@ -199,19 +209,15 @@ export async function addAndPublishNewBookEdition({
   } catch (error) {
     console.error(error);
 
-    onError?.(error?.message ?? 'An errur occured while submitting the application.');
+    onError?.(error?.message ?? 'An errur occured while submitting the book.');
 
     throw error;
   }
 }
 
-export async function editBookEdition({
+export async function editBook({
   cover_url,
-  publisher_id,
-  publisher_name,
-  publisher_address,
   book_id,
-  edition_id,
   onUploadProgress,
 
   onSuccess,
@@ -222,17 +228,21 @@ export async function editBookEdition({
   ...formData
 }) {
   try {
-    if (!book_id || !edition_id) {
+    if (!book_id) {
       throw new Error('Unable to edit this book at this time. Please try later.');
     }
 
-    const bookEdition = await getBookEdition({ bookId: book_id, editionId: edition_id });
+    const book = await getPublisherBook({ bookId: book_id });
 
-    const { authors, isbn, language, price, type, title, resume } = formData;
+    const { authors, isbn, language, price, type, title, resume, category_id, description, genre } =
+      formData;
 
-    const bookEditionData = {
-      ...bookEdition,
+    const bookData = {
+      ...book,
       cover_url,
+      category_id,
+      description,
+      genre,
       authors,
       isbn: isbn ?? '',
       book_id,
@@ -246,15 +256,15 @@ export async function editBookEdition({
     };
 
     await updateAsset({
-      senderAddress: publisher_address,
-      assetId: bookEdition.onchain_id,
+      senderAddress: book.publisher_address,
+      assetId: book.onchain_id,
       name: title,
       assetType: 'book',
-      publishThisAsset: bookEdition.published ?? true,
+      publishThisAsset: book.published ?? true,
 
       price: price ?? 0,
 
-      assetJson: omit(bookEditionData, ['downloads_count', 'cid', 'onchain_id']),
+      assetJson: omit(bookData, ['downloads_count', 'cid', 'onchain_id']),
 
       onStartup: ({ payment }) => {
         onInit?.(payment);
@@ -262,7 +272,7 @@ export async function editBookEdition({
       onError: (e) => {
         console.error(e);
 
-        onError?.(e?.message ?? 'An errur occured while adding the book edition.');
+        onError?.(e?.message ?? 'An errur occured while updating this book.');
 
         throw e;
       },
@@ -273,30 +283,9 @@ export async function editBookEdition({
         onProcessing?.({ isInBlock, isFinalized, isCompleted, isError, log });
       },
       onSuccess: async () => {
-        await updateDocument(`${booksCollection}/${book_id}/editions`, edition_id, bookEditionData);
+        await updateDocument(booksCollection, book_id, bookData);
 
-        const book = await getPublisherBook({ bookId: book_id });
-
-        const bookUpdateData = {
-          updated_at: Timestamp.now(),
-
-          ...(book.actual_edition_id === edition_id
-            ? {
-                cover_url,
-                authors,
-                isbn: isbn ?? '',
-                resume,
-                title,
-                price,
-                type,
-                language,
-              }
-            : {}),
-        };
-
-        await updateDocument(booksCollection, book_id, bookUpdateData);
-
-        onSuccess?.({ id: book_id, editionId: edition_id, document });
+        onSuccess?.({ id: book_id });
       },
     });
   } catch (error) {
@@ -308,87 +297,45 @@ export async function editBookEdition({
   }
 }
 
-export async function unPublishBookEdition({ book_id, edition_id }) {
+export async function unPublishBook({ book_id }) {
   try {
-    const book = await getBookEdition({
+    const book = await getPublisherBook({
       bookId: book_id,
-      editionId: edition_id,
     });
 
-    if (book?.published ?? false) {
-      await updateDocument(`${booksCollection}/${book_id}/editions`, edition_id, {
-        published: false,
-        un_published_at: Timestamp.now(),
-      });
-
-      await updateDocument(booksCollection, edition_id, {
-        actual_release_id: null,
-        status: 'un_published',
-        published: false,
-        un_published_at: Timestamp.now(),
-      });
-
-      return book.id;
+    if (!(book?.published ?? false)) {
+      throw new Error('Book edition is not published.');
     }
 
-    throw new Error('Book edition is not published.');
-  } catch (error) {
-    console.error(error);
-
-    throw error;
-  }
-}
-
-export async function removeBookEdition({ book_id, edition_id }) {
-  try {
-    const book = await getBookEdition({
-      bookId: book_id,
-      editionId: edition_id,
-    });
-
-    await deleteDocument(`${booksCollection}/${book_id}/editions`, edition_id);
-
-    if (book?.published ?? false) {
-      await updateDocument(booksCollection, book_id, {
-        actual_release_id: null,
-        status: 'un_published',
-        published: false,
-        un_published_at: Timestamp.now(),
-      });
-    }
-
-    return true;
-  } catch (error) {
-    console.error(error);
-
-    throw error;
-  }
-}
-
-export async function addNewBook({ publisher_id, publisher_name, ...formData }) {
-  try {
-    const { authors, isbn, language, price, type, title, resume, category_id, description, genre } =
-      formData;
-
-    const documentId = await addDocument(booksCollection, {
-      authors,
-      category_id,
-      description,
-      genre,
-      isbn: isbn ?? '',
-      resume,
-      title,
-      price,
-      type,
-      language,
-      publisher_id,
-      publisher_name,
-      created_at: Timestamp.now(),
+    await updateDocument(booksCollection, book_id, {
       published: false,
-      published_at: null,
+      status: 'un_published',
+      un_published_at: Timestamp.now(),
     });
 
-    return documentId;
+    return book.id;
+  } catch (error) {
+    console.error(error);
+
+    throw error;
+  }
+}
+
+export async function removeBook({ book_id }) {
+  try {
+    const book = await getPublisherBook({
+      bookId: book_id,
+    });
+
+    if (book === null) {
+      throw new Error('Unable to delete this book at this time ; please retry later.');
+    }
+
+    if (book?.published ?? false) {
+      throw new Error('Unpublish the book before deleting it.');
+    }
+
+    await deleteDocument(booksCollection, book_id);
   } catch (error) {
     console.error(error);
 

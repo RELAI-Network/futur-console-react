@@ -33,9 +33,9 @@ import FilePondFirebaseInputField from 'src/components/form/filepond_firebase';
 
 import { bookTypes, bookGenres, bookLanguages } from '../constants';
 import {
-  editBookEdition,
+  editBook,
   getBooksCategories,
-  addAndPublishNewBookEdition,
+  addAndPublishNewBook,
 } from '../services/firestore';
 
 // Register the plugins
@@ -110,9 +110,8 @@ export default function CreateNewEditBook({ formData = null }) {
 
       try {
         if (editing) {
-          await editBookEdition({
-            book_id: form.data.book_id,
-            edition_id: form.data.id,
+          await editBook({
+            book_id: form.data.id,
 
             cover_url: form.data.cover_url,
 
@@ -134,7 +133,7 @@ export default function CreateNewEditBook({ formData = null }) {
             ...{ ...form.data, is_free: `${form.data.is_free ?? true}` === 'true' },
           });
         } else {
-          await addAndPublishNewBookEdition({
+          await addAndPublishNewBook({
             book_file: form.data.ebook_file,
             book_file_name: form.data.ebook_file.name,
             book_file_extension: form.data.ebook_file.name.split('.').pop(),

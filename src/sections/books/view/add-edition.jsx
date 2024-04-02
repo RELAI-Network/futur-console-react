@@ -32,7 +32,7 @@ import FormSelect from 'src/components/form/select';
 import CircularLoader from 'src/components/loader/CircularLoader';
 
 import { bookLanguages } from '../constants';
-import { getPublisherBook, addAndPublishNewBookEdition } from '../services/firestore';
+import { getPublisherBook, addAndPublishNewBook } from '../services/firestore';
 // ----------------------------------------------------------------------
 
 // Register the plugins
@@ -82,9 +82,7 @@ export default function AddNewReleaseView() {
       form.setSubmitting(true);
 
       try {
-        await addAndPublishNewBookEdition({
-          book_id: book.id,
-
+        await addAndPublishNewBook({
           publisher_id: user.publisher_id,
           publisher_name: user.publisher_name,
 

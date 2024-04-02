@@ -48,6 +48,7 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback(
     async (data) => {
       setUser(data);
+      setStatus('idle');
       navigate('/');
     },
     [navigate, setUser]
@@ -55,6 +56,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(async () => {
     setUser(null);
+    setStatus('idle');
     navigate('/login', { replace: true });
   }, [navigate, setUser]);
 

@@ -63,6 +63,18 @@ export async function getDeveloperApplication({ applicationId }) {
   }
 }
 
+export async function getAppReviews({ applicationId }) {
+  try {
+    const reviews = await getAll(`${appsCollection}/${applicationId}/reviews`);
+
+    return reviews.sort((a, b) => b.added_at - a.added_at);
+  } catch (error) {
+    console.error(error);
+
+    throw error;
+  }
+}
+
 export async function getApplicationReleases({ applicationId }) {
   try {
     const releases = await getAll(`${appsCollection}/${applicationId}/releases`);
