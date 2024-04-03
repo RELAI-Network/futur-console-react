@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 /* eslint-disable prefer-template */
 /* eslint-disable react/prop-types */
 import { Icon } from '@iconify/react';
@@ -79,26 +80,57 @@ export default function AccountSetupView() {
 
         <Stack spacing={3}>
           <ConfigAction
-            actionLabel="1. Install Polkadot Js Navigator extension"
-            actionFunc={() => launchPage('https://polkadot.js.org/extension/')}
+            actionLabel="1. Install Polkadot or Talisman Navigator extension"
+            actionFunc={() => {
+              launchPage('https://polkadot.js.org/extension/');
+              launchPage('https://www.talisman.xyz/download');
+            }}
             buttonText="Install"
-            description="Finish installation, accept requirements, allow connection to the extension and refresh the page."
-            done={isExtensionInstalled('polkadot-js')}
+            description="Finish installation, set up your password, add an account, accept requirements, allow connection to the extension and refresh the page. You will need to choose accounts to connect to futur console."
+            done={isExtensionInstalled('polkadot-js') || isExtensionInstalled('talisman')}
             loading={loadingInstalledExtensions}
             buttonColor="inherit"
+            actionsBuilder={({ done, loading, buttonEnabled }) => (
+              <Stack direction="column" spacing={2}>
+                <LoadingButton
+                  sx={{
+                    maxHeight: 40,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-start',
+                    whiteSpace: 'nowrap',
+                  }}
+                  disabled={!buttonEnabled}
+                  loading={loading}
+                  onClick={() => launchPage('https://polkadot.js.org/extension/')}
+                  variant="contained"
+                  color="primary"
+                >
+                  Install Polkadot
+                </LoadingButton>
+                <LoadingButton
+                  sx={{
+                    maxHeight: 40,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-start',
+                    whiteSpace: 'nowrap',
+                  }}
+                  disabled={!buttonEnabled}
+                  loading={loading}
+                  onClick={() => launchPage('https://www.talisman.xyz/download')}
+                  variant="outlined"
+                  color="secondary"
+                >
+                  Install Talisman
+                </LoadingButton>
+              </Stack>
+            )}
           />
-          <ConfigAction
-            actionLabel="2. Install Talisman Navigator extension (Optional)"
-            actionFunc={() => launchPage('https://www.talisman.xyz/download')}
-            buttonText="Add Talisman extension"
-            description="Finish installation, set up your password, add an account, and refresh the page. You will need to choose accounts to connect to your console."
-            done={isExtensionInstalled('talisman')}
-            loading={loadingInstalledExtensions}
-            buttonColor="inherit"
-          />
+          <br />
           {accounts != null && (
             <ConfigAction
-              actionLabel="3. Connect your wallet"
+              actionLabel="2. Connect your wallet"
               actionFunc={async () => {
                 setConnectingToWallet(true);
 
@@ -250,7 +282,7 @@ export default function AccountSetupView() {
                   setTransactionLog('Transaction finalized. Setting your developer account...');
 
                   await updateUserAccountAfterRegistration({
-                    userID : user.uid,
+                    userID: user.uid,
                     accountAddress: selectedAccount.address,
                     accountSource: selectedAccount.meta.source,
                     accountName: selectedAccount.publisherName ?? selectedAccount.meta.name,
@@ -293,6 +325,7 @@ function ConfigAction({
   actionFunc,
   buttonText,
   description,
+  actionsBuilder,
   buttonColor = 'primary',
 }) {
   return (
@@ -307,9 +340,16 @@ function ConfigAction({
         >
           {actionLabel}
         </Typography>
-        {done || (description && <Typography variant="subtitle2">{description}</Typography>)}
+        {done ||
+          (description && (
+            <Typography variant="subtitle2" color="text.secondary">
+              {description}
+            </Typography>
+          ))}
       </Stack>
-      {done ? (
+      {actionsBuilder ? (
+        actionsBuilder({ done, buttonEnabled, loading })
+      ) : done ? (
         <Icon icon="lets-icons:check-fill" width={36} color="green" />
       ) : (
         <LoadingButton

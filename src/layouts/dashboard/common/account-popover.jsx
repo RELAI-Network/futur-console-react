@@ -87,7 +87,7 @@ export default function AccountPopover({ noActions = false }) {
         <Identicon
           value={user.web3_account_address}
           size={36}
-          theme="substrate" /// 'polkadot', 'substrate' (default), 'beachball' or 'jdenticon'
+          theme="polkadot" /// 'polkadot', 'substrate' (default), 'beachball' or 'jdenticon'
           sx={{
             width: 36,
             height: 36,

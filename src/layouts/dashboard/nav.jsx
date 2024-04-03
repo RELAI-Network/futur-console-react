@@ -54,7 +54,7 @@ export default function Nav({ noActions = false, openNav, onCloseNav, navConfig 
       <Identicon
         value={user.web3_account_address}
         size={36}
-        theme="substrate" /// 'polkadot', 'substrate' (default), 'beachball' or 'jdenticon'
+        theme="polkadot" /// 'polkadot', 'substrate' (default), 'beachball' or 'jdenticon'
       />
 
       <Box sx={{ ml: 2 }}>

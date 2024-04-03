@@ -8,7 +8,7 @@ import { web3FromAddress } from '@polkadot/extension-dapp';
 
 import { getWeb3Accounts } from 'src/sections/account/services/extensions';
 
-const wsEndPoint = 'wss://rpc1.relai.network';
+export const wsEndPoint = 'wss://rpc1.relai.network';
 
 // eslint-disable-next-line consistent-return
 export async function submitAsset({
