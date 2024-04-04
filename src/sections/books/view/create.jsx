@@ -50,8 +50,10 @@ registerPlugin(
 export default function CreateNewEditBook({ formData = null }) {
   const form = useFormValidation({
     initialData: {
+      type: 'text',
       is_free: true,
       min_age_requirement: 12,
+      price: 0,
       ...(formData === null ? {} : formData),
     },
   });
@@ -108,6 +110,8 @@ export default function CreateNewEditBook({ formData = null }) {
     ) {
       form.setSubmitting(true);
 
+      debugger;
+
       try {
         if (editing) {
           await editBook({
@@ -155,7 +159,7 @@ export default function CreateNewEditBook({ formData = null }) {
               form.setSubmitError(e?.message ?? 'An error occured while adding the book.');
             },
 
-            ...{ ...form.data, is_free: `${form.data.is_free ?? true}` === 'true' },
+            ...{ ...form.data, is_free: `${form.data.is_free ?? true}` === 'true', price: form.data.price ?? 0 },
           });
         }
       } catch (error) {
@@ -217,6 +221,9 @@ export default function CreateNewEditBook({ formData = null }) {
                 }}
                 label="Type *"
                 name="type"
+                // eslint-disable-next-line react/jsx-boolean-value
+                readOnly={true}
+                disabled
                 items={bookTypes}
                 error={form.validationErrors.type}
                 helperText={form.validationErrors.type}

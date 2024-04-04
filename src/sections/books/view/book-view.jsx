@@ -8,7 +8,6 @@ import Identicon from '@polkadot/react-identicon';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 // import Rating from '@mui/material/Rating';
-import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import Container from '@mui/material/Container';
 import TableCell from '@mui/material/TableCell';
@@ -72,7 +71,7 @@ export default function AppView() {
                 </Typography>
               </Box>
             </Stack>
-            <Box>
+            {/* <Box>
               <Button
                 onClick={() => router.push(`/books/view/${bookId}/add-edition`)}
                 variant="contained"
@@ -80,7 +79,7 @@ export default function AppView() {
               >
                 Add new edition
               </Button>
-            </Box>
+            </Box> */}
           </Stack>
         )}
       </Stack>

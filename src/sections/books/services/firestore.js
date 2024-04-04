@@ -134,6 +134,8 @@ export async function addAndPublishNewBook({
       onProgress: onUploadProgress,
     });
 
+    debugger;
+
     const bookData = {
       authors,
       category_id,
@@ -162,6 +164,8 @@ export async function addAndPublishNewBook({
       published_at: Timestamp.now(),
     };
 
+    debugger;
+
     await submitAsset({
       user_web3_account_address: publisher_address,
       name: title,
@@ -189,6 +193,8 @@ export async function addAndPublishNewBook({
         onProcessing?.({ isInBlock, isFinalized, isCompleted, isError, log });
       },
       onSuccess: async ({ assetId }) => {
+        debugger;
+
         const documentId = await addDocument(
           booksCollection,
           {
@@ -202,6 +208,8 @@ export async function addAndPublishNewBook({
           },
           book_id
         );
+
+        debugger;
 
         onSuccess?.({ id: book_id, editionId: documentId, document, assetId });
       },

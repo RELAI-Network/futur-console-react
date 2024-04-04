@@ -22,6 +22,7 @@ const FormSelect = ({
   multiple = false,
   focused = true,
   disabled = false,
+  readOnly = false,
   ...props
 }) => (
   <FormControl
@@ -43,6 +44,7 @@ const FormSelect = ({
       name={name}
       label={label}
       value={defaultValue}
+      readOnly
       onChange={(e) => {
         onChange(e.target.value);
       }}
