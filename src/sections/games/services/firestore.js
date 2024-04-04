@@ -65,6 +65,7 @@ export async function uploadToMobSF({ package_file }) {
       'Content-Type': 'multipart/form-data',
     },
     rejectUnauthorized: false,
+    timeout: 0,
   };
 
   const { data } = await axios.post(
@@ -85,6 +86,7 @@ export async function scanMobSF({ hash }) {
       'Content-Type': null,
     },
     rejectUnauthorized: false,
+    timeout: 0,
   };
 
   const { data } = await axios.post(
