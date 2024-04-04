@@ -273,7 +273,7 @@ export default function CreateNewEditBook({ formData = null }) {
             <Grid item xs={12}>
               <TextField
                 name="resume"
-                label="Resume"
+                label="Summary"
                 required
                 helperText={form.validationErrors.resume}
                 error={!!form.validationErrors.resume}

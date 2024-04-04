@@ -44,7 +44,7 @@ const FormSelect = ({
       name={name}
       label={label}
       value={defaultValue}
-      readOnly
+      readOnly={readOnly}
       onChange={(e) => {
         onChange(e.target.value);
       }}
