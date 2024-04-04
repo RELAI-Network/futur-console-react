@@ -164,6 +164,7 @@ export default function CreateNewEditBook({ formData = null }) {
             ...{
               ...form.data,
               is_free: `${form.data.is_free ?? true}` === 'true',
+              category_id: form.data.category_id ?? form.data.genre,
               price: form.data.price ?? 0,
             },
           });
