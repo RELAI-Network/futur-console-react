@@ -147,6 +147,7 @@ export async function uploadToMobSF({ package_file }) {
       // 'Content-Type': 'multipart/form-data',
       'content-type': 'multipart/form-data',
     },
+    rejectUnauthorized: false,
   };
 
   const { data } = await axios.post(
@@ -171,6 +172,7 @@ export async function scanMobSF(hash) {
       // Authorization: import.meta.env.VITE_APP_MOBSF_KEY,
       // 'Content-Type': null,
     },
+    rejectUnauthorized: false,
   };
 
   const { data } = await axios.post(
