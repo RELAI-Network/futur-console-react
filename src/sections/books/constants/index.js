@@ -70,6 +70,10 @@ export const bookGenres = [
     label: 'Science',
   },
   {
+    value: 'science-fiction',
+    label: 'Science fiction',
+  },
+  {
     value: 'biography',
     label: 'Biography',
   },
