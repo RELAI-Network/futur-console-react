@@ -23,11 +23,6 @@ const navConfig = [
     icon: icon('account'),
   },
   {
-    title: 'monetization',
-    path: 'publisher/monetization',
-    icon: icon('money'),
-  },
-  {
     title: 'settings',
     path: 'publisher/settings',
     icon: icon('setting'),

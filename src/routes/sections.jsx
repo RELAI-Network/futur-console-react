@@ -13,7 +13,6 @@ export const IndexPage = lazy(() => import('src/pages/home'));
 export const PublisherHomePage = lazy(() => import('src/pages/publisher_home'));
 export const AccountPage = lazy(() => import('src/pages/account'));
 export const ProfilePage = lazy(() => import('src/pages/profile'));
-export const MonetizationPage = lazy(() => import('src/pages/monetization'));
 export const SettingsPage = lazy(() => import('src/pages/settings'));
 
 export const AppsPage = lazy(() => import('src/pages/apps'));
@@ -69,7 +68,6 @@ export default function Router() {
         { element: <IndexPage />, path: '/developer' },
         { element: <AccountPage />, path: 'developer/account' },
         { element: <ProfilePage />, path: 'developer/profile' },
-        { element: <MonetizationPage />, path: 'developer/monetization' },
         { element: <SettingsPage />, path: 'developer/settings' },
 
         { element: <AppsPage />, path: 'apps' },
@@ -102,7 +100,6 @@ export default function Router() {
         { element: <PublisherHomePage />, path: 'publisher' },
         { element: <AccountPage />, path: 'publisher/account' },
         { element: <ProfilePage />, path: 'publisher/profile' },
-        { element: <MonetizationPage />, path: 'publisher/monetization' },
         { element: <SettingsPage />, path: 'publisher/settings' },
 
         { element: <BooksPage />, path: 'books' },
