@@ -19,7 +19,7 @@ import FormSelect from 'src/components/form/select';
 
 import { useAuth } from '../../hooks/use_auth';
 import { validateSchemas } from '../../utils/forms/validator';
-import { registerPublisher } from '../../services/firebase/firestore/auth';
+import { registerNewUser } from '../../services/firebase/firestore/auth';
 import { useFormValidation } from '../../utils/forms/hooks/useFormValidation';
 
 // ----------------------------------------------------------------------
@@ -49,7 +49,7 @@ export default function SignUpView() {
     ) {
       form.setSubmitting(true);
 
-      registerPublisher({
+      registerNewUser({
         formData: form.data,
         onError: (errorMessage) => {
           form.setSubmitError(errorMessage);

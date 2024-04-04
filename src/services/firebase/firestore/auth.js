@@ -37,12 +37,12 @@ import {
  * @param {string} options.formData.website - The website of the user.
  * @returns {Promise<void>}
  */
-export async function registerPublisher({ onError, onSuccess, formData, onLogOut }) {
+export async function registerNewUser({ onError, onSuccess, formData, onLogOut }) {
   try {
     let credential;
 
     try {
-      credential = await signUpWithEmailAndPassword(formData.email, formData.password);
+      credential = await signUpWithEmailAndPassword(formData.email.toLowerCase(), formData.password);
     } catch (e) {
       console.error(e);
 
@@ -92,7 +92,7 @@ export async function signInUser({ onError, onSuccess, formData, onLogOut }) {
 
   try {
     try {
-      credential = await logInWithEmailAndPassword(formData.email, formData.password);
+      credential = await logInWithEmailAndPassword(formData.email.toLowerCase(), formData.password);
     } catch (e) {
       console.error(e);
 

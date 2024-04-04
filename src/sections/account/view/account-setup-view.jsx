@@ -74,7 +74,7 @@ export default function AccountSetupView() {
     <Container maxWidth="xl">
       <Box marginX="auto" maxWidth={600}>
         <Typography variant="h4" textAlign="center">
-          Setup your developer account
+          Setup your {`${user.role}`} account
         </Typography>
         <br />
 
@@ -260,7 +260,7 @@ export default function AccountSetupView() {
                     fee: Number(payment.partialFee) / 1000000000000,
                   };
 
-                  setTransactionLog('This transaction will cost you ' + paymentInfo.fee + ' DOT.');
+                  setTransactionLog('This transaction will cost you ' + paymentInfo.fee + ' $RL.');
                 },
 
                 onProcessing: (result) => {

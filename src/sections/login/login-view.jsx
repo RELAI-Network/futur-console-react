@@ -95,11 +95,12 @@ export default function LoginView() {
         />
       </Stack>
 
-      <Stack direction="row" alignItems="center" justifyContent="flex-end" sx={{ my: 3 }}>
+      {/* <Stack direction="row" alignItems="center" justifyContent="flex-end" sx={{ my: 3 }}>
         <Link href="/forgot-password" variant="subtitle2" underline="hover">
           Forgot password?
         </Link>
-      </Stack>
+      </Stack> */}
+      <br />
       <Typography color="error">{form.submitError}</Typography>
       <br />
       <LoadingButton
