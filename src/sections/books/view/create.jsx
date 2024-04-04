@@ -32,11 +32,7 @@ import CircularLoader from 'src/components/loader/CircularLoader';
 import FilePondFirebaseInputField from 'src/components/form/filepond_firebase';
 
 import { bookTypes, bookGenres, bookLanguages } from '../constants';
-import {
-  editBook,
-  getBooksCategories,
-  addAndPublishNewBook,
-} from '../services/firestore';
+import { editBook, getBooksCategories, addAndPublishNewBook } from '../services/firestore';
 
 // Register the plugins
 registerPlugin(
@@ -52,6 +48,7 @@ export default function CreateNewEditBook({ formData = null }) {
     initialData: {
       type: 'text',
       is_free: true,
+      // category_id: 'others',
       min_age_requirement: 12,
       price: 0,
       ...(formData === null ? {} : formData),
@@ -73,7 +70,7 @@ export default function CreateNewEditBook({ formData = null }) {
           // 1 - Information
           title: 'Enter book title.',
           type: 'Select book type.',
-          category_id: 'Select book category.',
+          // category_id: 'Select book category.',
           description: 'Enter book description.',
           resume: 'Enter book resume.',
 
@@ -134,7 +131,12 @@ export default function CreateNewEditBook({ formData = null }) {
               form.setSubmitError(e?.message ?? 'An error occured while editing the book.');
             },
 
-            ...{ ...form.data, is_free: `${form.data.is_free ?? true}` === 'true' },
+            ...{
+              ...form.data,
+              is_free: `${form.data.is_free ?? true}` === 'true',
+              category_id: form.data.category_id ?? form.data.genre,
+              price: form.data.price ?? 0,
+            },
           });
         } else {
           await addAndPublishNewBook({
@@ -159,7 +161,11 @@ export default function CreateNewEditBook({ formData = null }) {
               form.setSubmitError(e?.message ?? 'An error occured while adding the book.');
             },
 
-            ...{ ...form.data, is_free: `${form.data.is_free ?? true}` === 'true', price: form.data.price ?? 0 },
+            ...{
+              ...form.data,
+              is_free: `${form.data.is_free ?? true}` === 'true',
+              price: form.data.price ?? 0,
+            },
           });
         }
       } catch (error) {
@@ -231,7 +237,7 @@ export default function CreateNewEditBook({ formData = null }) {
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <FormSelect
+              {/* <FormSelect
                 onChange={(value) => {
                   form.setFieldValue('category_id', value);
                 }}
@@ -244,7 +250,7 @@ export default function CreateNewEditBook({ formData = null }) {
                 error={form.validationErrors.category_id}
                 helperText={form.validationErrors.category_id}
                 defaultValue={form.data.category_id}
-              />
+              /> */}
             </Grid>
 
             <Grid item xs={12}>
