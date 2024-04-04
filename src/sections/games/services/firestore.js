@@ -69,7 +69,7 @@ export async function uploadToMobSF({ package_file }) {
 
   const { data } = await axios.post(
     // `${import.meta.env.VITE_APP_MOBSF_BASE_URL}/upload`,
-    `34.163.36.166:8000/api/v1/upload`,
+    `//34.163.31.92:8000/api/v1/upload`,
     formData,
     config
   );
@@ -89,7 +89,7 @@ export async function scanMobSF({ hash }) {
 
   const { data } = await axios.post(
     // `${import.meta.env.VITE_APP_MOBSF_BASE_URL}/upload`,
-    `34.163.36.166:8000/api/v1/upload`,
+    `//34.163.31.92:8000/api/v1/upload`,
     {
       hash,
       // re_scan: 0,
