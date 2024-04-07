@@ -18,8 +18,7 @@ import Iconify from 'src/components/iconify';
 import Tableview from 'src/components/table_view';
 import CircularLoader from 'src/components/loader/CircularLoader';
 
-import { getDeveloperGames } from 'src/sections/games/services/firestore';
-import { getDeveloperApplications } from 'src/sections/apps/services/firestore';
+import { getDeveloperApplicationsAndGame } from 'src/sections/apps/services/firestore';
 // ----------------------------------------------------------------------
 
 export default function HomeView() {
@@ -28,11 +27,7 @@ export default function HomeView() {
   const { user } = useAuth();
 
   const { data: applications, loading: appplicationsAreLoading } = usePromise(() =>
-    getDeveloperApplications({ developerId: user.publisher_id })
-  );
-
-  const { data: games, loading: gamesAreLoasding } = usePromise(() =>
-    getDeveloperGames({ developerId: user.publisher_id })
+    getDeveloperApplicationsAndGame({ developerId: user.publisher_id })
   );
 
   const router = useRouter();
@@ -68,7 +63,7 @@ export default function HomeView() {
           />
         </Box>
       </Stack>
-      {appplicationsAreLoading || gamesAreLoasding ? (
+      {appplicationsAreLoading ? (
         <CircularLoader />
       ) : (
         <Tableview
@@ -128,7 +123,7 @@ export default function HomeView() {
             },
           ]}
           identifier="id"
-          items={[...applications, ...games]}
+          items={applications}
           showHeader={false}
           showSearchAndFilter={false}
           onClickRow={(id, item) => {

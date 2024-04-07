@@ -31,7 +31,7 @@ export async function getDeveloperGames({ developerId }) {
 
     return apps.filter(
       (app) => app.app_type === 'game' && `${developerId}` === `${app.publisher_id}`
-    );
+    ).sort((a, b) => b.created_at - a.created_at);
   } catch (error) {
     console.error(error);
 
@@ -80,21 +80,14 @@ export async function uploadToMobSF({ package_file }) {
 
 export async function scanMobSF({ hash }) {
   const config = {
-    headers: {
-      'X-Mobsf-Api-Key': import.meta.env.VITE_APP_MOBSF_KEY,
-      Authorization: import.meta.env.VITE_APP_MOBSF_KEY,
-      'Content-Type': null,
-    },
-    rejectUnauthorized: false,
     timeout: 0,
   };
 
   const { data } = await axios.post(
     `${import.meta.env.VITE_APP_MOBSF_BASE_URL}/scan`,
-    // `//34.163.31.92:8000/api/v1/upload`,
     {
       hash,
-      // re_scan: 0,
+      re_scan: 0,
     },
     config
   );

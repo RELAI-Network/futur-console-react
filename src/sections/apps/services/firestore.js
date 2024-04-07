@@ -45,7 +45,25 @@ export async function getDeveloperApplications({ developerId }) {
         ...app,
         app_version: toInteger(`${app.version}`.replaceAll('.', '')),
       }))
-      .sort((a, b) => b.app_version - a.app_version);
+      .sort((a, b) => b.created_at - a.created_at);
+  } catch (error) {
+    console.error(error);
+
+    throw error;
+  }
+}
+
+export async function getDeveloperApplicationsAndGame({ developerId }) {
+  try {
+    const apps = await getAllWhere(appsCollection, 'publisher_id', '==', developerId);
+
+    return apps
+      .map((app) => ({
+        id: app.id,
+        ...app,
+        app_version: toInteger(`${app.version}`.replaceAll('.', '')),
+      }))
+      .sort((a, b) => b.created_at - a.created_at);
   } catch (error) {
     console.error(error);
 
@@ -162,26 +180,16 @@ export async function uploadToMobSF({ package_file }) {
 }
 
 export async function scanMobSF(hash) {
-  const formData = new FormData();
-
-  formData.append('hash', hash);
-
-  formData.append('re_scan', 0);
-
   const config = {
-    headers: {
-      'X-Mobsf-Api-Key': import.meta.env.VITE_APP_MOBSF_KEY,
-      // Authorization: import.meta.env.VITE_APP_MOBSF_KEY,
-      // 'Content-Type': null,
-    },
-    rejectUnauthorized: false,
     timeout: 0,
   };
 
   const { data } = await axios.post(
     `${import.meta.env.VITE_APP_MOBSF_BASE_URL}/scan`,
-    // `//34.163.31.92:8000/api/v1/scan`,
-    formData,
+    {
+      hash,
+      re_scan: 0,
+    },
     config
   );
 
