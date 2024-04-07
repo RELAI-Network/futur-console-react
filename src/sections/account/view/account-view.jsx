@@ -70,7 +70,7 @@ export default function AccountView() {
               </Box>
             </Stack>
             <Box>
-              {data?.balance && data?.balance < 10 && (
+              {data && data?.balance < 10 && (
                 <LoadingButton
                   loading={loading}
                   disabled={balanceLoading}
