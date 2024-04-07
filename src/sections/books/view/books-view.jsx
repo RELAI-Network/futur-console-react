@@ -121,6 +121,25 @@ export default function BooksView() {
                 </TableCell>
               ),
             },
+            {
+              attribute: 'file_main_url',
+              builder: (download) => (
+                <TableCell align="center" sx={{ cursor: 'pointer', color: 'primary' }}>
+                  <Iconify
+                    onClick={(e) => {
+                      e.stopPropagation();
+
+                      window.open(download, '_blank', 'noopener,noreferrer');
+                      return false;
+                    }}
+                    color="primary"
+                    icon="material-symbols:download"
+                    width={24}
+                    height={24}
+                  />
+                </TableCell>
+              ),
+            },
           ]}
           headers={[
             {
@@ -146,6 +165,11 @@ export default function BooksView() {
             {
               attribute: 'published',
               label: 'Status',
+            },
+            {
+              attribute: 'download',
+              label: 'Download',
+              textAlign: 'center',
             },
           ]}
           identifier="id"

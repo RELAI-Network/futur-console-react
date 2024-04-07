@@ -9,6 +9,7 @@ import Divider from '@mui/material/Divider';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import LoadingButton from '@mui/lab/LoadingButton';
+import LinearProgress from '@mui/material/LinearProgress';
 
 import { useAuth } from 'src/hooks/use_auth';
 import usePromise from 'src/hooks/use_promise';
@@ -55,30 +56,38 @@ export default function AccountView() {
                   Account Address :{' '}
                   <span style={{ fontWeight: 'bold' }}>{user.web3_account_address}</span>
                 </Typography>
-                {balanceLoading || (
-                <Typography>
-                  Account Balance :{' '}
-                  <span style={{ fontWeight: 'bold' }}>{`${data?.balance} $RL`}</span>
-                </Typography>
-              )}
+                {balanceLoading ? (
+                  <>
+                    <br />
+                    <LinearProgress />
+                  </>
+                ) : (
+                  <Typography>
+                    Account Balance :{' '}
+                    <span style={{ fontWeight: 'bold' }}>{`${data?.balance} $RL`}</span>
+                  </Typography>
+                )}
               </Box>
             </Stack>
             <Box>
-            <LoadingButton
-              loading={loading}
-              onClick={async () => {
-                setLoading(true);
-                await requestTokens(user.web3_account_address);
+              {data?.balance && data?.balance < 10 && (
+                <LoadingButton
+                  loading={loading}
+                  disabled={balanceLoading}
+                  onClick={async () => {
+                    setLoading(true);
+                    await requestTokens(user.web3_account_address);
 
-                setLoading(false);
+                    setLoading(false);
 
-                // router.reload();
-              }}
-              variant="contained"
-              color="success"
-            >
-              Request tokens
-            </LoadingButton>
+                    // router.reload();
+                  }}
+                  variant="contained"
+                  color="success"
+                >
+                  Request tokens
+                </LoadingButton>
+              )}
             </Box>
           </Stack>
         </Stack>

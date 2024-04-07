@@ -43,7 +43,7 @@ async function addDocument(collectionName, data, id) {
 // Function to get a document from a collection
 async function getDocument(collectionName, documentId) {
   try {
-    const docRef = doc(db, collectionName, documentId);
+    const docRef = doc(db, collectionName, `${documentId}`);
 
     const documentSnapshot = await getDoc(docRef);
 
@@ -156,7 +156,7 @@ async function getAllWheres(collectionName, queries) {
 // Function to update a document in a collection
 async function updateDocument(collectionName, documentId, data) {
   try {
-    const document = doc(db, collectionName, documentId);
+    const document = doc(db, collectionName, `${documentId}`);
 
     await updateDoc(document, data);
   } catch (error) {
@@ -171,7 +171,7 @@ async function updateDocument(collectionName, documentId, data) {
 // Function to delete a document from a collection
 async function deleteDocument(collectionName, documentId) {
   try {
-    const document = doc(db, collectionName, documentId);
+    const document = doc(db, collectionName, `${documentId}`);
 
     return deleteDoc(document);
   } catch (error) {

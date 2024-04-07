@@ -19,21 +19,21 @@ import { logUserOut } from '../../../services/firebase/firestore/auth';
 // ----------------------------------------------------------------------
 
 const MENU_OPTIONS = [
+  // {
+  //   label: 'Home',
+  //   icon: 'eva:home-fill',
+  //   url: '/',
+  // },
   {
-    label: 'Home',
-    icon: 'eva:home-fill',
-    url: '/',
-  },
-  {
-    label: 'Profile',
+    label: 'Account',
     icon: 'eva:person-fill',
-    url: '/profile',
+    url: '/account',
   },
-  {
-    label: 'Settings',
-    icon: 'eva:settings-2-fill',
-    url: '/settings',
-  },
+  // {
+  //   label: 'Settings',
+  //   icon: 'eva:settings-2-fill',
+  //   url: '/settings',
+  // },
 ];
 
 // ----------------------------------------------------------------------
@@ -64,7 +64,6 @@ export default function AccountPopover({ noActions = false }) {
 
   const handleClose = (url) => {
     if (url) {
-      debugger;
       router.push(url);
     }
     setOpen(null);

@@ -1,7 +1,7 @@
 /* eslint-disable no-debugger */
 import { useMemo } from 'react';
-import { toInteger } from 'lodash';
 import PropTypes from 'prop-types';
+import { toInteger } from 'lodash';
 import 'filepond/dist/filepond.min.css';
 import { FilePond, registerPlugin } from 'react-filepond';
 import FilePondPluginImagePreview from 'filepond-plugin-image-preview';
@@ -24,6 +24,7 @@ import { useAuth } from 'src/hooks/use_auth';
 import usePromise from 'src/hooks/use_promise';
 
 import { validateSchemas } from 'src/utils/forms/validator';
+import { convertScientificNotationNumber } from 'src/utils/helpers';
 import { useFormValidation } from 'src/utils/forms/hooks/useFormValidation';
 
 import FormSelect from 'src/components/form/select';
@@ -41,6 +42,8 @@ registerPlugin(
   FilePondPluginFileValidateType
 );
 
+
+
 // ----------------------------------------------------------------------
 
 export default function CreateNewEditBook({ formData = null }) {
@@ -51,7 +54,13 @@ export default function CreateNewEditBook({ formData = null }) {
       // category_id: 'others',
       min_age_requirement: 12,
       price: 0,
-      ...(formData === null ? {} : formData),
+      ...(formData === null
+        ? {}
+        : {
+            ...formData,
+            is_free: toInteger(`${formData.price}`) === 0,
+            price: toInteger(`${formData.price}`),
+          }),
     },
   });
 
@@ -106,8 +115,6 @@ export default function CreateNewEditBook({ formData = null }) {
       })
     ) {
       form.setSubmitting(true);
-
-      debugger;
 
       try {
         if (editing) {
@@ -417,15 +424,22 @@ export default function CreateNewEditBook({ formData = null }) {
               {`${form.data.is_free ?? true}` === 'true' ? null : (
                 <TextField
                   name="price"
-                  label="Price in $RL"
+                  label="Price"
                   type="number"
                   required
                   helperText={form.validationErrors.price}
                   error={!!form.validationErrors.price}
                   onChange={(e) => form.setFieldValue('price', e.target.value)}
+                  value={form.data.price}
+                  focused
                   size="small"
                   fullWidth
                 />
+              )}
+              {form.data.price && (
+                <Typography color="text.secondary">
+                  {convertScientificNotationNumber(form.data.price / 1000000000000)} $RL
+                </Typography>
               )}
             </Grid>
             <Grid item xs={12} md={6}>

@@ -25,6 +25,7 @@ import { useAuth } from 'src/hooks/use_auth';
 import usePromise from 'src/hooks/use_promise';
 
 import { validateSchemas } from 'src/utils/forms/validator';
+import { convertScientificNotationNumber } from 'src/utils/helpers';
 import { useFormValidation } from 'src/utils/forms/hooks/useFormValidation';
 
 import Iconify from 'src/components/iconify';
@@ -59,7 +60,11 @@ export default function CreateNewGame({ formData = null }) {
         ? {
             email: user?.email,
           }
-        : formData),
+        : {
+            ...formData,
+            is_free: toInteger(`${formData.price}`) === 0,
+            price: toInteger(`${formData.price}`),
+          }),
     },
   });
 
@@ -435,6 +440,11 @@ export default function CreateNewGame({ formData = null }) {
                   size="small"
                   fullWidth
                 />
+              )}
+              {form.data.price && (
+                <Typography color="text.secondary">
+                  {convertScientificNotationNumber(form.data.price / 1000000000000)} $RL
+                </Typography>
               )}
             </Grid>
             <Grid item xs={12} md={6}>

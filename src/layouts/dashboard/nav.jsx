@@ -152,7 +152,7 @@ Nav.propTypes = {
 function NavItem({ item, disabled = false }) {
   const pathname = usePathname();
 
-  const active = item.path === pathname || (item.path !== '/' && pathname?.startsWith(item.path));
+  const active = item.path === pathname || ((item.path !== '/' && pathname?.startsWith(item.path)) && !item.index);
 
   return (
     <ListItemButton

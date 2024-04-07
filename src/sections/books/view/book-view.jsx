@@ -24,7 +24,7 @@ import CircularLoader from 'src/components/loader/CircularLoader';
 
 import { getBookReviews, getPublisherBook } from '../services/firestore';
 
-export default function AppView() {
+export default function BookView() {
   const { id: bookId } = useParams();
 
   const router = useRouter();

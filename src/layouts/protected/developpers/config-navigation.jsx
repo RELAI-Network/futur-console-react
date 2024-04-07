@@ -9,8 +9,9 @@ const icon = (name) => (
 const navConfig = [
   {
     title: 'dashboard',
-    path: '/',
+    path: '/developer',
     icon: icon('ic_analytics'),
+    index: true,
   },
   {
     title: 'apps',
@@ -24,14 +25,14 @@ const navConfig = [
   },
   {
     title: 'account',
-    path: 'developer/account',
+    path: '/developer/account',
     icon: icon('account'),
   },
-  {
-    title: 'settings',
-    path: 'developer/settings',
-    icon: icon('setting'),
-  },
+  // {
+  //   title: 'settings',
+  //   path: 'developer/settings',
+  //   icon: icon('setting'),
+  // },
 ];
 
 export default navConfig;
