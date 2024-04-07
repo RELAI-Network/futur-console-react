@@ -1,8 +1,8 @@
 /* eslint-disable no-debugger */
 import { useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { toInteger } from 'lodash';
 import 'filepond/dist/filepond.min.css';
+import { isBoolean, toInteger } from 'lodash';
 import { FilePond, registerPlugin } from 'react-filepond';
 import FilePondPluginImagePreview from 'filepond-plugin-image-preview';
 import 'filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css';
@@ -90,7 +90,17 @@ export default function CreateNewEditBook({ formData = null }) {
           // 3 - Additionnal
           authors: 'Add book authors.',
           min_age_requirement: 'Indicate min age requirement.',
-          is_free: 'Indicates if the book is free.',
+          is_free: ({ value }) => {
+            if (isBoolean(value)) {
+              return undefined;
+            }
+
+            if (!value) {
+              return 'Indicates if the book is free.';
+            }
+
+            return undefined;
+          },
           price: ({ value, values }) => {
             if (values.is_free) {
               return undefined;
