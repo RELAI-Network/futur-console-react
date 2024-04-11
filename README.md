@@ -1,5 +1,4 @@
-# Futur Console of Relai Network
-
+# Futur Console Web App
 A web application portal for app/game developers and ebook publishers for Futur Protocol.
 
 The deployed dev version can be found here:  [link](https://console-relai.web.app/)
